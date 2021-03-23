@@ -150,41 +150,6 @@
 		spi-rx-bus-width = <8>;
 		m25p,fast-read;
 
-		at91bootstrap@0 {
-			label = "ospi: at91bootstrap";
-			reg = <0x0 0x40000>;
-		};
-
-		bootloader@40000 {
-			label = "ospi: bootloader";
-			reg = <0x40000 0xc0000>;
-		};
-
-		bootloaderenvred@100000 {
-			label = "ospi: bootloader env redundant";
-			reg = <0x100000 0x40000>;
-		};
-
-		bootloaderenv@140000 {
-			label = "ospi: bootloader env";
-			reg = <0x140000 0x40000>;
-		};
-
-		dtb@180000 {
-			label = "ospi: device tree";
-			reg = <0x180000 0x80000>;
-		};
-
-		kernel@200000 {
-			label = "ospi: kernel";
-			reg = <0x200000 0x600000>;
-		};
-
-		rootfs@800000 {
-			label = "ospi: rootfs";
-			reg = <0x800000 0x7800000>;
-		};
-
 	};
 };
 
