@@ -175,8 +175,7 @@ static int spi_nor_read_raw(struct spi_nor *nor, u32 addr, size_t len, u8 *buf)
  *
  * Return: 0 on success, -errno otherwise.
  */
-static int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr,
-			     size_t len, void *buf)
+int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr, size_t len, void *buf)
 {
 	u8 addr_width, read_opcode, read_dummy;
 	int ret;
@@ -1228,6 +1227,20 @@ out:
 	return ret;
 }
 
+static int spi_nor_parse_manufacturer_sfdp(struct spi_nor *nor,
+			u16 param_header_id,
+			const struct sfdp_parameter_header *param_header)
+{
+	const struct spi_nor_manufacturer_sfdp *manufacturer_sfdp =
+		nor->manufacturer->sfdp;
+
+	if (manufacturer_sfdp && manufacturer_sfdp->parse &&
+	    param_header_id == manufacturer_sfdp->id)
+		return manufacturer_sfdp->parse(nor, param_header);
+
+	return 0;
+}
+
 /**
  * spi_nor_parse_sfdp() - parse the Serial Flash Discoverable Parameters.
  * @nor:		pointer to a 'struct spi_nor'
@@ -1250,6 +1263,7 @@ int spi_nor_parse_sfdp(struct spi_nor *nor)
 	size_t sfdp_size;
 	size_t psize;
 	int i, err;
+	u16 param_header_id;
 
 	/* Get the SFDP header. */
 	err = spi_nor_read_sfdp_dma_unsafe(nor, 0, sizeof(header), &header);
@@ -1373,8 +1387,9 @@ int spi_nor_parse_sfdp(struct spi_nor *nor)
 	/* Parse optional parameter tables. */
 	for (i = 0; i < header.nph; i++) {
 		param_header = &param_headers[i];
+		param_header_id = SFDP_PARAM_HEADER_ID(param_header);
 
-		switch (SFDP_PARAM_HEADER_ID(param_header)) {
+		switch (param_header_id) {
 		case SFDP_SECTOR_MAP_ID:
 			err = spi_nor_parse_smpt(nor, param_header);
 			break;
@@ -1392,6 +1407,9 @@ int spi_nor_parse_sfdp(struct spi_nor *nor)
 			break;
 
 		default:
+			err = spi_nor_parse_manufacturer_sfdp(nor,
+							      param_header_id,
+							      param_header);
 			break;
 		}
 

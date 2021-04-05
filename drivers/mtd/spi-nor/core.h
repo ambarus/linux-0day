@@ -261,6 +261,7 @@ struct spi_nor_otp {
  *                      page size, etc.
  * @locking_ops:	SPI NOR locking methods.
  * @otp:		SPI NOR OTP methods.
+ * @priv:		flash's private parameters.
  */
 struct spi_nor_flash_parameter {
 	u64				size;
@@ -283,6 +284,7 @@ struct spi_nor_flash_parameter {
 	int (*setup)(struct spi_nor *nor, const struct spi_nor_hwcaps *hwcaps);
 
 	const struct spi_nor_locking_ops *locking_ops;
+	void *priv;
 };
 
 /**
@@ -446,17 +448,45 @@ struct flash_info {
 		},
 
 /**
+ * struct spi_nor_manufacturer_sfdp: Manufacturer SFDP object.
+ * Describes a Manufacturer Specific or a Function Specific Manufacturer table.
+ *
+ * The Manufacturer Specific SFDP tables are uniquely identified by the ID field
+ * in the SFDP Parameter Header, where the ID's MSB indicates the bank number
+ * of a JEDEC JEP106 assigned Manufacturer ID, and the LSB indicates the JEP106
+ * Manufacturer’s Identification Code.
+ *
+ * The Function Specific SFDP tables are identified by the ID field in the
+ * SFDP Parameter Header, where the most signigicant bit position of the ID LSB
+ * has even parity.
+ * The purpose of the Function Specific tables is to allow development of
+ * features and associated parameter tables common to multiple manufacturers,
+ * prior to the parameter tables being incorporated into the next revision of
+ * JESD216.
+ *
+ * @id: SFDP parameter header ID.
+ * @parse: parses the manufacturer SFDP table.
+ */
+struct spi_nor_manufacturer_sfdp {
+	u16 id;
+	int (*parse)(struct spi_nor *nor,
+		     const struct sfdp_parameter_header *param_header);
+};
+
+/**
  * struct spi_nor_manufacturer - SPI NOR manufacturer object
  * @name: manufacturer name
  * @parts: array of parts supported by this manufacturer
  * @nparts: number of entries in the parts array
  * @fixups: hooks called at various points in time during spi_nor_scan()
+ * @sfdp: manufacturer's SFDP object.
  */
 struct spi_nor_manufacturer {
 	const char *name;
 	const struct flash_info *parts;
 	unsigned int nparts;
 	const struct spi_nor_fixups *fixups;
+	const struct spi_nor_manufacturer_sfdp *sfdp;
 };
 
 /**

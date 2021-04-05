@@ -108,5 +108,6 @@ struct sfdp_parameter_header {
 };
 
 int spi_nor_parse_sfdp(struct spi_nor *nor);
+int spi_nor_read_sfdp(struct spi_nor *nor, u32 addr, size_t len, void *buf);
 
 #endif /* __LINUX_MTD_SFDP_H */
