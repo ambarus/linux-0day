@@ -7,6 +7,11 @@
 #ifndef __LINUX_MTD_SFDP_H
 #define __LINUX_MTD_SFDP_H
 
+#define SFDP_PARAM_HEADER_PTP(p) \
+	(((p)->parameter_table_pointer[2] << 16) | \
+	 ((p)->parameter_table_pointer[1] <<  8) | \
+	 ((p)->parameter_table_pointer[0] <<  0))
+
 /* SFDP revisions */
 #define SFDP_JESD216_MAJOR	1
 #define SFDP_JESD216_MINOR	0
