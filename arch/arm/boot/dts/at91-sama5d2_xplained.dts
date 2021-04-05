@@ -73,7 +73,7 @@
 			bus-width = <4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sdmmc1_default>;
-			status = "okay"; /* conflict with qspi0 */
+			status = "disabled"; /* conflict with qspi0 */
 			vqmmc-supply = <&vdd_3v3_reg>;
 			vmmc-supply = <&vdd_3v3_reg>;
 		};
@@ -82,7 +82,7 @@
 			qspi0: spi@f0020000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_qspi0_default>;
-				status = "disabled"; /* conflict with sdmmc1 */
+				status = "okay"; /* conflict with sdmmc1 */
 
 				flash@0 {
 					#address-cells = <1>;
@@ -93,41 +93,6 @@
 					spi-tx-bus-width = <4>;
 					spi-rx-bus-width = <4>;
 					m25p,fast-read;
-
-					at91bootstrap@00000000 {
-						label = "at91bootstrap";
-						reg = <0x00000000 0x00040000>;
-					};
-
-					bootloader@00040000 {
-						label = "bootloader";
-						reg = <0x00040000 0x000c0000>;
-					};
-
-					bootloaderenvred@00100000 {
-						label = "bootloader env redundant";
-						reg = <0x00100000 0x00040000>;
-					};
-
-					bootloaderenv@00140000 {
-						label = "bootloader env";
-						reg = <0x00140000 0x00040000>;
-					};
-
-					dtb@00180000 {
-						label = "device tree";
-						reg = <0x00180000 0x00080000>;
-					};
-
-					kernel@00200000 {
-						label = "kernel";
-						reg = <0x00200000 0x00600000>;
-					};
-
-					misc@00800000 {
-						label = "misc";
-						reg = <0x00800000 0x00000000>;
-					};
 				};
 			};
 
