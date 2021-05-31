@@ -5,6 +5,7 @@
  *
  * Author: Boris Brezillon <boris.brezillon@bootlin.com>
  */
+#include <linux/align.h>
 #include <linux/dmaengine.h>
 #include <linux/iopoll.h>
 #include <linux/pm_runtime.h>
@@ -176,6 +177,16 @@ bool spi_mem_default_supports_op(struct spi_mem *mem,
 			return false;
 
 		if (op->cmd.nbytes != 2)
+			return false;
+
+		if (op->addr.nbytes && !IS_ALIGNED(op->addr.nbytes, 2))
+			return false;
+
+		if (op->dummy.nbytes && !IS_ALIGNED(op->dummy.nbytes, 2))
+			return false;
+
+		if (op->data.dir != SPI_MEM_NO_DATA &&
+		    !IS_ALIGNED(op->data.nbytes, 2))
 			return false;
 	} else {
 		if (op->cmd.nbytes != 1)
