@@ -334,6 +334,7 @@ struct flash_info {
 	u16		addr_width;
 
 	u32		flags;
+#define SPI_NOR_PARSE_SFDP	BIT(0)	/* Flash initialized based on SFDP. */
 #define SPI_NOR_SKIP_SFDP	BIT(1)	/* Skip parsing of SFDP tables */
 
 /*
