@@ -26,6 +26,24 @@ static const struct spi_nor_fixups mx25l3205d_fixups = {
 	.post_bfpt = mx25l3205d_post_bfpt_fixups,
 };
 
+static int mx25l12805d_post_bfpt_fixups(struct spi_nor *nor,
+				const struct sfdp_parameter_header *bfpt_header,
+				const struct sfdp_bfpt *bfpt)
+{
+	/*
+	 * Macronix has a bad habit of reusing flash IDs: MX25L12835F collides
+	 * with MX25L12805D. MX25L12835F defines SFDP tables, while the older
+	 * variant does not.
+	 */
+	nor->name = "mx25l12835f";
+
+	return 0;
+}
+
+static const struct spi_nor_fixups mx25l12805d_fixups = {
+	.post_bfpt = mx25l12805d_post_bfpt_fixups,
+};
+
 static int
 mx25l25635_post_bfpt_fixups(struct spi_nor *nor,
 			    const struct sfdp_parameter_header *bfpt_header,
@@ -82,8 +100,11 @@ static const struct flash_info macronix_nor_parts[] = {
 	{ "mx25u6435f",  INFO(0xc22537, 0, 64 * 1024, 128)
 		NO_SFDP_FLAGS(SECT_4K) },
 	{ "mx25l12805d", INFO(0xc22018, 0, 64 * 1024, 256)
+		/* ID collision with mx25l12835f. */
+		PARSE_SFDP
 		FLAGS(SPI_NOR_HAS_LOCK | SPI_NOR_4BIT_BP)
-		NO_SFDP_FLAGS(SECT_4K) },
+		NO_SFDP_FLAGS(SECT_4K)
+		.fixups = &mx25l12805d_fixups },
 	{ "mx25l12855e", INFO(0xc22618, 0, 64 * 1024, 256) },
 	{ "mx25r1635f",  INFO(0xc22815, 0, 64 * 1024,  32)
 		NO_SFDP_FLAGS(SECT_4K | SPI_NOR_DUAL_READ |
