@@ -351,7 +351,10 @@ struct spi_nor_flash_parameter;
  * @bouncebuf:		bounce buffer used when the buffer passed by the MTD
  *                      layer is not DMA-able
  * @bouncebuf_size:	size of the bounce buffer
- * @name:		used to point to correct name in case of ID collisions.
+ * @name:		used to point to correct flash name in case of ID
+ *                      collisions.
+ * @manufacturer_name:	used to point to correct manufacturer name in case of
+ *                      ID collisions.
  * @info:		SPI NOR part JEDEC MFR ID and other info
  * @manufacturer:	SPI NOR manufacturer
  * @addr_width:		number of address bytes
@@ -382,6 +385,7 @@ struct spi_nor {
 	u8			*bouncebuf;
 	size_t			bouncebuf_size;
 	const char *name;
+	const char *manufacturer_name;
 	const struct flash_info	*info;
 	const struct spi_nor_manufacturer *manufacturer;
 	u8			addr_width;

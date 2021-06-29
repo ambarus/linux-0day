@@ -14,7 +14,7 @@ static ssize_t manufacturer_show(struct device *dev,
 	struct spi_mem *spimem = spi_get_drvdata(spi);
 	struct spi_nor *nor = spi_mem_get_drvdata(spimem);
 
-	return sysfs_emit(buf, "%s\n", nor->manufacturer->name);
+	return sysfs_emit(buf, "%s\n", nor->manufacturer_name);
 }
 static DEVICE_ATTR_RO(manufacturer);
 

@@ -1610,6 +1610,7 @@ int spi_nor_sr2_bit7_quad_enable(struct spi_nor *nor)
 }
 
 static const struct spi_nor_manufacturer *manufacturers[] = {
+	&spi_nor_manuf_id_collisions,
 	&spi_nor_atmel,
 	&spi_nor_catalyst,
 	&spi_nor_eon,
@@ -3037,6 +3038,8 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 
 	if (!nor->name)
 		nor->name = info->name;
+	if (!nor->manufacturer_name)
+		nor->manufacturer_name = nor->manufacturer->name;
 
 	dev_info(dev, "%s (%lld Kbytes)\n", nor->name,
 			(long long)mtd->size >> 10);
