@@ -17,6 +17,15 @@ static const struct spi_nor_fixups boya_nor_fixups = {
 	.late_init = boya_nor_late_init,
 };
 
+static void xtx_nor_late_init(struct spi_nor *nor)
+{
+	nor->manufacturer_name = "xtx";
+}
+
+static const struct spi_nor_fixups xtx_nor_fixups = {
+	.late_init = xtx_nor_late_init,
+};
+
 static const struct flash_info id_collision_parts[] = {
 	/* Boya */
 	{ "by25q128as", INFO(0x684018, 0, 64 * 1024, 256)
@@ -24,6 +33,11 @@ static const struct flash_info id_collision_parts[] = {
 		NO_SFDP_FLAGS(SPI_NOR_SKIP_SFDP | SECT_4K | SPI_NOR_DUAL_READ |
 			      SPI_NOR_QUAD_READ)
 		.fixups = &boya_nor_fixups },
+
+	/* XTX (XTX Technology Limited) */
+	{ "xt25f128b", INFO(0x0b4018, 0, 64 * 1024, 256)
+		PARSE_SFDP
+		.fixups = &xtx_nor_fixups },
 };
 
 const struct spi_nor_manufacturer spi_nor_manuf_id_collisions = {
