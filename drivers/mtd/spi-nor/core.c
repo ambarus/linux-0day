@@ -2672,6 +2672,12 @@ static void spi_nor_post_sfdp_fixups(struct spi_nor *nor)
  */
 static void spi_nor_late_init_params(struct spi_nor *nor)
 {
+	if (nor->manufacturer && nor->manufacturer->late_init)
+		nor->manufacturer->late_init(nor);
+
+	if (nor->info->late_init)
+		nor->info->late_init(nor);
+
 	/*
 	 * NOR protection support. When locking_ops are not provided, we pick
 	 * the default ones.
@@ -2713,8 +2719,8 @@ static void spi_nor_late_init_params(struct spi_nor *nor)
  *    wrong).
  *		spi_nor_post_sfdp_fixups()
  *
- * 5/ Late default flash parameters initialization, used when the
- * ->default_init() hook or the SFDP parser do not set specific params.
+ * 5/ Late flash parameters initialization, used to initialize flash
+ * parameters that are not declared in the JESD216 SFDP standard.
  *		spi_nor_late_init_params()
  */
 static int spi_nor_init_params(struct spi_nor *nor)

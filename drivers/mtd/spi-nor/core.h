@@ -391,6 +391,11 @@ struct flash_info {
 
 	/* Part specific fixup hooks. */
 	const struct spi_nor_fixups *fixups;
+	/*
+	 * Init flash parameters that are not declared in the JESD216 SFDP
+	 * standard.
+	 */
+	void (* const late_init)(struct spi_nor *nor);
 };
 
 /* Used when the "_ext_id" is two bytes at most */
@@ -457,12 +462,15 @@ struct flash_info {
  * @parts: array of parts supported by this manufacturer
  * @nparts: number of entries in the parts array
  * @fixups: hooks called at various points in time during spi_nor_scan()
+ * @late_init: used to init flash parameters that are not declared in the
+ *             JESD216 SFDP standard.
  */
 struct spi_nor_manufacturer {
 	const char *name;
 	const struct flash_info *parts;
 	unsigned int nparts;
 	const struct spi_nor_fixups *fixups;
+	void (* const late_init)(struct spi_nor *nor);
 };
 
 /**
