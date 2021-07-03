@@ -289,9 +289,8 @@ struct spi_nor_flash_parameter {
 
 /**
  * struct spi_nor_fixups - SPI NOR fixup hooks
- * @default_init: called after default flash parameters init. Used to tweak
- *                flash parameters when information provided by the flash_info
- *                table is incomplete or wrong.
+ * @default_init: Deprecated. Use the post_{bfpt, sfdp}, or the late_init()
+ *                hooks instead.
  * @post_bfpt: called after the BFPT table has been parsed
  * @post_sfdp: called after SFDP has been parsed (is also called for SPI NORs
  *             that do not support RDSFDP). Typically used to tweak various
