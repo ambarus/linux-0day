@@ -2628,28 +2628,6 @@ static void spi_nor_post_sfdp_fixups(struct spi_nor *nor)
 }
 
 /**
- * spi_nor_sfdp_init_params() - Initialize the flash's parameters and settings
- * based on JESD216 SFDP standard.
- * @nor:	pointer to a 'struct spi_nor'.
- *
- * The method has a roll-back mechanism: in case the SFDP parsing fails, the
- * legacy flash parameters and settings will be restored.
- */
-static void spi_nor_sfdp_init_params(struct spi_nor *nor)
-{
-	struct spi_nor_flash_parameter sfdp_params;
-
-	memcpy(&sfdp_params, nor->params, sizeof(sfdp_params));
-
-	if (!spi_nor_parse_sfdp(nor))
-		return spi_nor_post_sfdp_fixups(nor);
-
-	memcpy(nor->params, &sfdp_params, sizeof(*nor->params));
-	nor->addr_width = 0;
-	nor->flags &= ~SNOR_F_4B_OPCODES;
-}
-
-/**
  * spi_nor_info_init_params() - Initialize the flash's parameters and settings
  * based on nor->info data.
  * @nor:	pointer to a 'struct spi_nor'.
@@ -2720,6 +2698,39 @@ static void spi_nor_info_init_params(struct spi_nor *nor)
 	spi_nor_set_erase_type(&map->erase_type[i], info->sector_size,
 			       SPINOR_OP_SE);
 	spi_nor_init_uniform_erase_map(map, erase_mask, params->size);
+}
+
+/**
+ * spi_nor_sfdp_init_params() - Initialize the flash's parameters and settings
+ * based on JESD216 SFDP standard.
+ * @nor:	pointer to a 'struct spi_nor'.
+ *
+ * The method has a roll-back mechanism: in case the SFDP parsing fails, the
+ * legacy flash parameters and settings will be restored.
+ */
+static void spi_nor_sfdp_init_params(struct spi_nor *nor,
+				     bool treat_id_collisions)
+{
+	struct spi_nor_flash_parameter sfdp_params;
+
+	memcpy(&sfdp_params, nor->params, sizeof(sfdp_params));
+
+	if (!spi_nor_parse_sfdp(nor))
+		return spi_nor_post_sfdp_fixups(nor);
+
+	memcpy(nor->params, &sfdp_params, sizeof(*nor->params));
+	nor->addr_width = 0;
+	nor->flags &= ~SNOR_F_4B_OPCODES;
+
+	if (!treat_id_collisions)
+		return;
+	/*
+	 * Fallback to flash info params init in case the SFDP parsing fails.
+	 * Used to handle ID collisions between flashes that define the SFDP
+	 * tables and flashes that don't.
+	 */
+	spi_nor_info_init_params(nor);
+	spi_nor_manufacturer_init_params(nor);
 }
 
 /**
@@ -2797,7 +2808,9 @@ static void spi_nor_nonsfdp_flags_init(struct spi_nor *nor)
 }
 
 /**
- * spi_nor_init_params() - Initialize the flash's parameters and settings.
+ * spi_nor_init_params_deprecated() - Initialize the flash's parameters and
+ * settings. The function is deprecated, it will be removed and replaced with
+ * spi_nor_info_init_params().
  * @nor:	pointer to a 'struct spi_nor'.
  *
  * The flash parameters and settings are initialized based on a sequence of
@@ -2821,11 +2834,40 @@ static void spi_nor_nonsfdp_flags_init(struct spi_nor *nor)
  *    Please note that there are ->post_{bfpt, sfdp}() fixup hooks that can
  *    overwrite the flash parameters and settings immediately after table
  *    parsing.
+ */
+static void spi_nor_init_params_deprecated(struct spi_nor *nor)
+{
+	spi_nor_info_init_params(nor);
+	spi_nor_manufacturer_init_params(nor);
+
+	if ((nor->info->flags & (SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
+				 SPI_NOR_OCTAL_READ | SPI_NOR_OCTAL_DTR_READ)) &&
+	    !(nor->info->flags & SPI_NOR_SKIP_SFDP))
+		spi_nor_sfdp_init_params(nor, false);
+}
+
+/**
+ * spi_nor_init_params() - Initialize the flash's parameters and settings.
+ * @nor:	pointer to a 'struct spi_nor'.
  *
+ * The flash parameters and settings are initialized based on a sequence of
+ * calls that are ordered by priority:
+ *
+ * 1/ Default flash parameters initialization. The initializations are done
+ *    for all the flashes, regardless if the support SFDP or not.
+ *		spi_nor_init_default_params()
  * which can be overwritten by:
- * 4/ Late flash parameters initialization, used to initialize flash
+ *
+ * 2/ SFDP based or the deprecated way of initializing flash parameters.
+ * Ideally at this step the flash parameters init will be done either by
+ * parsing SFDP, where supported, or statically via flash_info flags.
+ *		spi_nor_sfdp_init_params() or spi_nor_init_params_deprecated()
+ * which can be overwritten by:
+ *
+ * 3/ Late flash parameters initialization, used to initialize flash
  * parameters that are not declared in the JESD216 SFDP standard.
  *		spi_nor_late_init_params()
+ *
  */
 static int spi_nor_init_params(struct spi_nor *nor)
 {
@@ -2835,15 +2877,10 @@ static int spi_nor_init_params(struct spi_nor *nor)
 
 	spi_nor_init_default_params(nor);
 
-	spi_nor_info_init_params(nor);
-
-	spi_nor_manufacturer_init_params(nor);
-
-	if ((nor->info->flags & (SPI_NOR_PARSE_SFDP |
-				 SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-				 SPI_NOR_OCTAL_READ | SPI_NOR_OCTAL_DTR_READ)) &&
-	    !(nor->info->flags & SPI_NOR_SKIP_SFDP))
-		spi_nor_sfdp_init_params(nor);
+	if (nor->info->flags & SPI_NOR_PARSE_SFDP)
+		spi_nor_sfdp_init_params(nor, true);
+	else
+		spi_nor_init_params_deprecated(nor);
 
 	spi_nor_late_init_params(nor);
 
