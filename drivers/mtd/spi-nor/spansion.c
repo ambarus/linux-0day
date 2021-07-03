@@ -276,7 +276,7 @@ static const struct flash_info spansion_parts[] = {
 	},
 };
 
-static void spansion_post_sfdp_fixups(struct spi_nor *nor)
+static void spansion_late_init(struct spi_nor *nor)
 {
 	if (nor->params->size <= SZ_16M)
 		return;
@@ -287,13 +287,9 @@ static void spansion_post_sfdp_fixups(struct spi_nor *nor)
 	nor->mtd.erasesize = nor->info->sector_size;
 }
 
-static const struct spi_nor_fixups spansion_fixups = {
-	.post_sfdp = spansion_post_sfdp_fixups,
-};
-
 const struct spi_nor_manufacturer spi_nor_spansion = {
 	.name = "spansion",
 	.parts = spansion_parts,
 	.nparts = ARRAY_SIZE(spansion_parts),
-	.fixups = &spansion_fixups,
+	.late_init = spansion_late_init,
 };
