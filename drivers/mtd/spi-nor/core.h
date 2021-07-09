@@ -348,40 +348,36 @@ struct flash_info {
 					 * S3AN flashes have specific opcode to
 					 * read the status register.
 					 */
-#define SPI_NOR_4B_OPCODES	BIT(11)	/*
-					 * Use dedicated 4byte address op codes
-					 * to support memory size above 128Mib.
-					 */
-#define NO_CHIP_ERASE		BIT(12) /* Chip does not support chip erase */
-#define SPI_NOR_SKIP_SFDP	BIT(13)	/* Skip parsing of SFDP tables */
-#define USE_CLSR		BIT(14)	/* use CLSR command */
-#define SPI_NOR_OCTAL_READ	BIT(15)	/* Flash supports Octal Read */
-#define SPI_NOR_TB_SR_BIT6	BIT(16)	/*
+#define NO_CHIP_ERASE		BIT(11) /* Chip does not support chip erase */
+#define SPI_NOR_SKIP_SFDP	BIT(12)	/* Skip parsing of SFDP tables */
+#define USE_CLSR		BIT(13)	/* use CLSR command */
+#define SPI_NOR_OCTAL_READ	BIT(14)	/* Flash supports Octal Read */
+#define SPI_NOR_TB_SR_BIT6	BIT(15)	/*
 					 * Top/Bottom (TB) is bit 6 of
 					 * status register. Must be used with
 					 * SPI_NOR_HAS_TB.
 					 */
-#define SPI_NOR_4BIT_BP		BIT(17) /*
+#define SPI_NOR_4BIT_BP		BIT(16) /*
 					 * Flash SR has 4 bit fields (BP0-3)
 					 * for block protection.
 					 */
-#define SPI_NOR_BP3_SR_BIT6	BIT(18) /*
+#define SPI_NOR_BP3_SR_BIT6	BIT(17) /*
 					 * BP3 is bit 6 of status register.
 					 * Must be used with SPI_NOR_4BIT_BP.
 					 */
-#define SPI_NOR_OCTAL_DTR_READ	BIT(19) /* Flash supports octal DTR Read. */
-#define SPI_NOR_OCTAL_DTR_PP	BIT(20) /* Flash supports Octal DTR Page Program */
-#define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(21) /*
+#define SPI_NOR_OCTAL_DTR_READ	BIT(18) /* Flash supports octal DTR Read. */
+#define SPI_NOR_OCTAL_DTR_PP	BIT(19) /* Flash supports Octal DTR Page Program */
+#define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(20) /*
 						 * Flash enables the best
 						 * available I/O mode via a
 						 * volatile bit.
 						 */
-#define SPI_NOR_SWP_IS_VOLATILE	BIT(22)	/*
+#define SPI_NOR_SWP_IS_VOLATILE	BIT(21)	/*
 					 * Flash has volatile software write
 					 * protection bits. Usually these will
 					 * power-up in a write-protected state.
 					 */
-#define SPI_NOR_PARSE_SFDP	BIT(23) /*
+#define SPI_NOR_PARSE_SFDP	BIT(22) /*
 					 * Flash initialized based on the SFDP
 					 * tables.
 					 */
@@ -569,4 +565,8 @@ static struct spi_nor __maybe_unused *mtd_to_spi_nor(struct mtd_info *mtd)
 	return mtd->priv;
 }
 
+static inline void snor_f_4b_opcodes(struct spi_nor *nor)
+{
+	nor->flags |= SNOR_F_4B_OPCODES;
+}
 #endif /* __LINUX_MTD_SPI_NOR_INTERNAL_H */

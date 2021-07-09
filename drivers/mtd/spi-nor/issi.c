@@ -45,9 +45,9 @@ static const struct flash_info issi_parts[] = {
 	{ "is25lp128",  INFO(0x9d6018, 0, 64 * 1024, 256,
 			     SECT_4K | SPI_NOR_DUAL_READ) },
 	{ "is25lp256",  INFO(0x9d6019, 0, 64 * 1024, 512,
-			     SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-			     SPI_NOR_4B_OPCODES)
-		.fixups = &is25lp256_fixups },
+			     SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ)
+		.fixups = &is25lp256_fixups,
+		.late_init = snor_f_4b_opcodes, },
 	{ "is25wp032",  INFO(0x9d7016, 0, 64 * 1024,  64,
 			     SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
 	{ "is25wp064",  INFO(0x9d7017, 0, 64 * 1024, 128,
@@ -55,9 +55,9 @@ static const struct flash_info issi_parts[] = {
 	{ "is25wp128",  INFO(0x9d7018, 0, 64 * 1024, 256,
 			     SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
 	{ "is25wp256", INFO(0x9d7019, 0, 64 * 1024, 512,
-			    SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-			    SPI_NOR_4B_OPCODES)
-		.fixups = &is25lp256_fixups },
+			    SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ)
+		.fixups = &is25lp256_fixups,
+		.late_init = snor_f_4b_opcodes, },
 
 	/* PMC */
 	{ "pm25lv512",   INFO(0,        0, 32 * 1024,    2, SECT_4K_PMC) },
