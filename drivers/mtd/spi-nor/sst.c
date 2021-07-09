@@ -85,8 +85,7 @@ static const struct flash_info sst_parts[] = {
 			      SPI_NOR_QUAD_READ) },
 	{ "sst26vf016b", INFO(0xbf2641, 0, 64 * 1024, 32,
 			      SECT_4K | SPI_NOR_DUAL_READ) },
-	{ "sst26vf064b", INFO(0xbf2643, 0, 64 * 1024, 128,
-			      SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
+	{ "sst26vf064b", INFO(0xbf2643, 0, 64 * 1024, 128, SPI_NOR_PARSE_SFDP |
 			      SPI_NOR_HAS_LOCK | SPI_NOR_SWP_IS_VOLATILE)
 		.fixups = &sst26vf_fixups },
 };
