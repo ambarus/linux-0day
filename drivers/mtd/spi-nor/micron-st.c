@@ -118,13 +118,18 @@ static struct spi_nor_fixups mt35xu512aba_fixups = {
 	.post_sfdp = mt35xu512aba_post_sfdp_fixup,
 };
 
+static void mt35xu512aba_late_init(struct spi_nor *nor)
+{
+	nor->flags |= SNOR_F_4B_OPCODES;
+	nor->flags |= SNOR_F_IO_MODE_EN_VOLATILE;
+}
+
 static const struct flash_info micron_parts[] = {
 	{ "mt35xu512aba", INFO(0x2c5b1a, 0, 128 * 1024, 512,
 			       SECT_4K | USE_FSR | SPI_NOR_OCTAL_READ |
-			       SPI_NOR_OCTAL_DTR_READ | SPI_NOR_OCTAL_DTR_PP |
-			       SPI_NOR_IO_MODE_EN_VOLATILE)
+			       SPI_NOR_OCTAL_DTR_READ | SPI_NOR_OCTAL_DTR_PP)
 	  .fixups = &mt35xu512aba_fixups,
-	  .late_init = snor_f_4b_opcodes, },
+	  .late_init = mt35xu512aba_late_init, },
 	{ "mt35xu02g", INFO(0x2c5b1c, 0, 128 * 1024, 2048,
 			    SECT_4K | USE_FSR | SPI_NOR_OCTAL_READ)
 	  .late_init = snor_f_4b_opcodes, },

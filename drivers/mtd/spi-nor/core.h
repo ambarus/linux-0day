@@ -367,17 +367,12 @@ struct flash_info {
 					 */
 #define SPI_NOR_OCTAL_DTR_READ	BIT(18) /* Flash supports octal DTR Read. */
 #define SPI_NOR_OCTAL_DTR_PP	BIT(19) /* Flash supports Octal DTR Page Program */
-#define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(20) /*
-						 * Flash enables the best
-						 * available I/O mode via a
-						 * volatile bit.
-						 */
-#define SPI_NOR_SWP_IS_VOLATILE	BIT(21)	/*
+#define SPI_NOR_SWP_IS_VOLATILE	BIT(20)	/*
 					 * Flash has volatile software write
 					 * protection bits. Usually these will
 					 * power-up in a write-protected state.
 					 */
-#define SPI_NOR_PARSE_SFDP	BIT(22) /*
+#define SPI_NOR_PARSE_SFDP	BIT(21) /*
 					 * Flash initialized based on the SFDP
 					 * tables.
 					 */
