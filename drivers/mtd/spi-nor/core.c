@@ -3129,10 +3129,8 @@ static void spi_nor_set_mtd_info(struct spi_nor *nor)
 	struct mtd_info *mtd = &nor->mtd;
 	struct device *dev = nor->dev;
 
-	spi_nor_register_locking_ops(nor);
-
-	/* Configure OTP parameters and ops */
-	spi_nor_otp_init(nor);
+	spi_nor_set_mtd_locking_ops(nor);
+	spi_nor_set_mtd_otp_ops(nor);
 
 	mtd->dev.parent = dev;
 	if (!mtd->name)
