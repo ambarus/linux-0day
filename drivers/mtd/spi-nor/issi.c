@@ -45,7 +45,7 @@ static const struct flash_info issi_parts[] = {
 	{ "is25lp128",  INFO(0x9d6018, 0, 64 * 1024, 256,
 			     SECT_4K | SPI_NOR_DUAL_READ) },
 	{ "is25lp256",  INFO(0x9d6019, 0, 64 * 1024, 512,
-			     SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ)
+			     SPI_NOR_PARSE_SFDP)
 		.fixups = &is25lp256_fixups,
 		.late_init = snor_f_4b_opcodes, },
 	{ "is25wp032",  INFO(0x9d7016, 0, 64 * 1024,  64,
