@@ -209,8 +209,9 @@ static const struct flash_info spansion_parts[] = {
 			      SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
 			      USE_CLSR) },
 	{ "s25fl256s0", INFO6(0x010219, 0x4d0080, 256 * 1024, 128,
-			      SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-			      USE_CLSR) },
+			      SPI_NOR_SKIP_SFDP |
+			      SFDP_FLAGS(SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
+					 USE_CLSR)) },
 	{ "s25fl256s1", INFO6(0x010219, 0x4d0180, 64 * 1024, 512,
 			      SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
 			      USE_CLSR) },
