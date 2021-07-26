@@ -557,7 +557,7 @@ void spi_nor_otp_init(struct spi_nor *nor);
 
 static struct spi_nor __maybe_unused *mtd_to_spi_nor(struct mtd_info *mtd)
 {
-	return mtd->priv;
+	return container_of(mtd, struct spi_nor, mtd);
 }
 
 static inline void snor_f_4b_opcodes(struct spi_nor *nor)
