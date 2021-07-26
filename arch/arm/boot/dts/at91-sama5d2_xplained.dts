@@ -74,7 +74,7 @@
 			bus-width = <4>;
 			pinctrl-names = "default";
 			pinctrl-0 = <&pinctrl_sdmmc1_default>;
-			status = "okay"; /* conflict with qspi0 */
+			status = "disabled"; /* conflict with qspi0 */
 			vqmmc-supply = <&vdd_3v3_reg>;
 			vmmc-supply = <&vdd_3v3_reg>;
 		};
@@ -83,7 +83,7 @@
 			qspi0: spi@f0020000 {
 				pinctrl-names = "default";
 				pinctrl-0 = <&pinctrl_qspi0_default>;
-				status = "disabled"; /* conflict with sdmmc1 */
+				status = "okay"; /* conflict with sdmmc1 */
 
 				flash@0 {
 					#address-cells = <1>;
