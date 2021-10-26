@@ -334,56 +334,81 @@ struct flash_info {
 	u16		addr_width;
 
 	u32		flags;
-#define SECT_4K			BIT(0)	/* SPINOR_OP_BE_4K works uniformly */
-#define SPI_NOR_NO_ERASE	BIT(1)	/* No erase command needed */
-#define SPI_NOR_NO_FR		BIT(3)	/* Can't do fastread */
-#define SECT_4K_PMC		BIT(4)	/* SPINOR_OP_BE_4K_PMC works uniformly */
-#define SPI_NOR_DUAL_READ	BIT(5)	/* Flash supports Dual Read */
-#define SPI_NOR_QUAD_READ	BIT(6)	/* Flash supports Quad Read */
-#define USE_FSR			BIT(7)	/* use flag status register */
-#define SPI_NOR_HAS_LOCK	BIT(8)	/* Flash supports lock/unlock via SR */
-#define SPI_NOR_HAS_TB		BIT(9)	/*
+#define SPI_NOR_SKIP_SFDP	BIT(1)	/* Skip parsing of SFDP tables */
+
+/*
+ * Flags that indicate support that is not defined by the JESD216 standard in
+ * its SFDP tables.
+ */
+#define NON_SFDP_FLAGS_MASK	GENMASK(15, 2)
+#define NON_SFDP_FLAGS(x)	((x) & NON_SFDP_FLAGS_MASK)
+#define SPI_NOR_HAS_LOCK	BIT(2)	/* Flash supports lock/unlock via SR */
+#define SPI_NOR_HAS_TB		BIT(3)	/*
 					 * Flash SR has Top/Bottom (TB) protect
 					 * bit. Must be used with
 					 * SPI_NOR_HAS_LOCK.
 					 */
-#define SPI_NOR_XSR_RDY		BIT(10)	/*
-					 * S3AN flashes have specific opcode to
-					 * read the status register.
-					 */
-#define SPI_NOR_4B_OPCODES	BIT(11)	/*
-					 * Use dedicated 4byte address op codes
-					 * to support memory size above 128Mib.
-					 */
-#define NO_CHIP_ERASE		BIT(12) /* Chip does not support chip erase */
-#define SPI_NOR_SKIP_SFDP	BIT(13)	/* Skip parsing of SFDP tables */
-#define USE_CLSR		BIT(14)	/* use CLSR command */
-#define SPI_NOR_OCTAL_READ	BIT(15)	/* Flash supports Octal Read */
-#define SPI_NOR_TB_SR_BIT6	BIT(16)	/*
+#define SPI_NOR_TB_SR_BIT6	BIT(4)	/*
 					 * Top/Bottom (TB) is bit 6 of
 					 * status register. Must be used with
 					 * SPI_NOR_HAS_TB.
 					 */
-#define SPI_NOR_4BIT_BP		BIT(17) /*
+#define SPI_NOR_4BIT_BP		BIT(5) /*
 					 * Flash SR has 4 bit fields (BP0-3)
 					 * for block protection.
 					 */
-#define SPI_NOR_BP3_SR_BIT6	BIT(18) /*
+#define SPI_NOR_BP3_SR_BIT6	BIT(6) /*
 					 * BP3 is bit 6 of status register.
 					 * Must be used with SPI_NOR_4BIT_BP.
 					 */
-#define SPI_NOR_OCTAL_DTR_READ	BIT(19) /* Flash supports octal DTR Read. */
-#define SPI_NOR_OCTAL_DTR_PP	BIT(20) /* Flash supports Octal DTR Page Program */
-#define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(21) /*
-						 * Flash enables the best
-						 * available I/O mode via a
-						 * volatile bit.
-						 */
-#define SPI_NOR_SWP_IS_VOLATILE	BIT(22)	/*
+#define SPI_NOR_SWP_IS_VOLATILE	BIT(7)	/*
 					 * Flash has volatile software write
 					 * protection bits. Usually these will
 					 * power-up in a write-protected state.
 					 */
+#define SPI_NOR_NO_ERASE	BIT(8)	/* No erase command needed */
+#define NO_CHIP_ERASE		BIT(9) /* Chip does not support chip erase */
+#define SPI_NOR_NO_FR		BIT(10)	/* Can't do fastread */
+#define USE_CLSR		BIT(11)	/* use CLSR command */
+#define USE_FSR			BIT(12)	/* use flag status register */
+#define SPI_NOR_XSR_RDY		BIT(13)	/*
+					 * S3AN flashes have specific opcode to
+					 * read the status register.
+					 */
+
+/*
+ * Flags that indicate support that can be discovered via SFDP. Used when SFDP
+ * tables are not defined in the flash. These flags are used together with the
+ * SPI_NOR_SKIP_SFDP flag.
+ */
+#define SFDP_FLAGS_MASK		GENMASK(23, 16)
+#define SFDP_FLAGS(x)		((x) & SFDP_FLAGS_MASK)
+#define SECT_4K			BIT(16)	/* SPINOR_OP_BE_4K works uniformly */
+#define SECT_4K_PMC		BIT(17)	/* SPINOR_OP_BE_4K_PMC works uniformly */
+#define SPI_NOR_DUAL_READ	BIT(18)	/* Flash supports Dual Read */
+#define SPI_NOR_QUAD_READ	BIT(19)	/* Flash supports Quad Read */
+#define SPI_NOR_OCTAL_READ	BIT(20)	/* Flash supports Octal Read */
+#define SPI_NOR_OCTAL_DTR_READ	BIT(21) /* Flash supports octal DTR Read. */
+#define SPI_NOR_OCTAL_DTR_PP	BIT(22) /* Flash supports Octal DTR Page Program */
+
+/*
+ * Flags that indicate support that can be discovered via SFDP ideally, but can
+ * not be discovered for this particular flash because the SFDP table that
+ * indicates this support is not defined by the flash. In case the table for
+ * this support is defined but has wrong values, one should instead use a
+ * post_sfdp() hook to set the SNOR_F equivalent flag.
+ */
+#define FIXUP_FLAGS_MASK	GENMASK(31, 24)
+#define FIXUP_FLAGS(x)		((x) & FIXUP_FLAGS_MASK)
+#define SPI_NOR_4B_OPCODES	BIT(24)	/*
+					 * Use dedicated 4byte address op codes
+					 * to support memory size above 128Mib.
+					 */
+#define SPI_NOR_IO_MODE_EN_VOLATILE	BIT(25) /*
+						 * Flash enables the best
+						 * available I/O mode via a
+						 * volatile bit.
+						 */
 
 	const struct spi_nor_otp_organization otp_org;
 
