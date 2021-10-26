@@ -412,6 +412,8 @@ static int atmel_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	u32 sr, offset;
 	int err;
 
+	dev_err(NULL, "op->cmd.opcode = %02x, op->addr.buswidth = %d, op->addr.nbytes = %d\n",
+		op->cmd.opcode, op->addr.buswidth, op->addr.nbytes);
 	/*
 	 * Check if the address exceeds the MMIO window size. An improvement
 	 * would be to add support for regular SPI mode and fall back to it
