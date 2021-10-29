@@ -121,13 +121,13 @@ static struct spi_nor_fixups mt35xu512aba_fixups = {
 static const struct flash_info micron_parts[] = {
 	{ "mt35xu512aba", INFO(0x2c5b1a, 0, 128 * 1024, 512,
 			       SECT_4K | USE_FSR | SPI_NOR_OCTAL_READ |
-			       SPI_NOR_4B_OPCODES | SPI_NOR_OCTAL_DTR_READ |
-			       SPI_NOR_OCTAL_DTR_PP |
-			       SPI_NOR_IO_MODE_EN_VOLATILE)
+			       SPI_NOR_OCTAL_DTR_READ | SPI_NOR_OCTAL_DTR_PP |
+			       FIXUP_FLAGS(SPI_NOR_4B_OPCODES |
+					   SPI_NOR_IO_MODE_EN_VOLATILE))
 	  .fixups = &mt35xu512aba_fixups},
 	{ "mt35xu02g", INFO(0x2c5b1c, 0, 128 * 1024, 2048,
 			    SECT_4K | USE_FSR | SPI_NOR_OCTAL_READ |
-			    SPI_NOR_4B_OPCODES) },
+			    FIXUP_FLAGS(SPI_NOR_4B_OPCODES)) },
 };
 
 static const struct flash_info st_parts[] = {
@@ -151,25 +151,29 @@ static const struct flash_info st_parts[] = {
 			      SPI_NOR_4BIT_BP | SPI_NOR_BP3_SR_BIT6) },
 	{ "mt25ql256a",  INFO6(0x20ba19, 0x104400, 64 * 1024,  512,
 			       SECT_4K | USE_FSR | SPI_NOR_DUAL_READ |
-			       SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+			       SPI_NOR_QUAD_READ |
+			       FIXUP_FLAGS(SPI_NOR_4B_OPCODES)) },
 	{ "n25q256a",    INFO(0x20ba19, 0, 64 * 1024,  512, SECT_4K |
 			      USE_FSR | SPI_NOR_DUAL_READ |
 			      SPI_NOR_QUAD_READ) },
 	{ "mt25qu256a",  INFO6(0x20bb19, 0x104400, 64 * 1024,  512,
 			       SECT_4K | USE_FSR | SPI_NOR_DUAL_READ |
-			       SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+			       SPI_NOR_QUAD_READ |
+			       FIXUP_FLAGS(SPI_NOR_4B_OPCODES)) },
 	{ "n25q256ax1",  INFO(0x20bb19, 0, 64 * 1024,  512,
 			      SECT_4K | USE_FSR | SPI_NOR_QUAD_READ) },
 	{ "mt25ql512a",  INFO6(0x20ba20, 0x104400, 64 * 1024, 1024,
 			       SECT_4K | USE_FSR | SPI_NOR_DUAL_READ |
-			       SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+			       SPI_NOR_QUAD_READ |
+			       FIXUP_FLAGS(SPI_NOR_4B_OPCODES)) },
 	{ "n25q512ax3",  INFO(0x20ba20, 0, 64 * 1024, 1024,
 			      SECT_4K | USE_FSR | SPI_NOR_QUAD_READ |
 			      SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB |
 			      SPI_NOR_4BIT_BP | SPI_NOR_BP3_SR_BIT6) },
 	{ "mt25qu512a",  INFO6(0x20bb20, 0x104400, 64 * 1024, 1024,
 			       SECT_4K | USE_FSR | SPI_NOR_DUAL_READ |
-			       SPI_NOR_QUAD_READ | SPI_NOR_4B_OPCODES) },
+			       SPI_NOR_QUAD_READ |
+			       FIXUP_FLAGS(SPI_NOR_4B_OPCODES)) },
 	{ "n25q512a",    INFO(0x20bb20, 0, 64 * 1024, 1024,
 			      SECT_4K | USE_FSR | SPI_NOR_QUAD_READ |
 			      SPI_NOR_HAS_LOCK | SPI_NOR_HAS_TB |
