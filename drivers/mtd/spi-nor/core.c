@@ -2540,6 +2540,7 @@ static void spi_nor_info_init_params(struct spi_nor *nor)
 	struct spi_nor_erase_map *map = &params->erase_map;
 	const struct flash_info *info = nor->info;
 	struct device_node *np = spi_nor_get_flash_node(nor);
+	const u8 sfdp_flags = info->sfdp_flags;
 	u8 i, erase_mask;
 
 	/* Initialize default flash parameters and settings. */
@@ -2556,7 +2557,7 @@ static void spi_nor_info_init_params(struct spi_nor *nor)
 	params->size = (u64)info->sector_size * info->n_sectors;
 	params->page_size = info->page_size;
 
-	if (!(info->flags & SPI_NOR_NO_FR)) {
+	if (!(info->non_sfdp_flags & SPI_NOR_NO_FR)) {
 		/* Default to Fast Read for DT and non-DT platform devices. */
 		params->hwcaps.mask |= SNOR_HWCAPS_READ_FAST;
 
@@ -2576,28 +2577,28 @@ static void spi_nor_info_init_params(struct spi_nor *nor)
 					  0, 8, SPINOR_OP_READ_FAST,
 					  SNOR_PROTO_1_1_1);
 
-	if (info->flags & SPI_NOR_DUAL_READ) {
+	if (sfdp_flags & SPI_NOR_DUAL_READ) {
 		params->hwcaps.mask |= SNOR_HWCAPS_READ_1_1_2;
 		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_1_1_2],
 					  0, 8, SPINOR_OP_READ_1_1_2,
 					  SNOR_PROTO_1_1_2);
 	}
 
-	if (info->flags & SPI_NOR_QUAD_READ) {
+	if (sfdp_flags & SPI_NOR_QUAD_READ) {
 		params->hwcaps.mask |= SNOR_HWCAPS_READ_1_1_4;
 		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_1_1_4],
 					  0, 8, SPINOR_OP_READ_1_1_4,
 					  SNOR_PROTO_1_1_4);
 	}
 
-	if (info->flags & SPI_NOR_OCTAL_READ) {
+	if (sfdp_flags & SPI_NOR_OCTAL_READ) {
 		params->hwcaps.mask |= SNOR_HWCAPS_READ_1_1_8;
 		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_1_1_8],
 					  0, 8, SPINOR_OP_READ_1_1_8,
 					  SNOR_PROTO_1_1_8);
 	}
 
-	if (info->flags & SPI_NOR_OCTAL_DTR_READ) {
+	if (sfdp_flags & SPI_NOR_OCTAL_DTR_READ) {
 		params->hwcaps.mask |= SNOR_HWCAPS_READ_8_8_8_DTR;
 		spi_nor_set_read_settings(&params->reads[SNOR_CMD_READ_8_8_8_DTR],
 					  0, 20, SPINOR_OP_READ_FAST,
@@ -2609,7 +2610,7 @@ static void spi_nor_info_init_params(struct spi_nor *nor)
 	spi_nor_set_pp_settings(&params->page_programs[SNOR_CMD_PP],
 				SPINOR_OP_PP, SNOR_PROTO_1_1_1);
 
-	if (info->flags & SPI_NOR_OCTAL_DTR_PP) {
+	if (sfdp_flags & SPI_NOR_OCTAL_DTR_PP) {
 		params->hwcaps.mask |= SNOR_HWCAPS_PP_8_8_8_DTR;
 		/*
 		 * Since xSPI Page Program opcode is backward compatible with
@@ -2625,12 +2626,12 @@ static void spi_nor_info_init_params(struct spi_nor *nor)
 	 */
 	erase_mask = 0;
 	i = 0;
-	if (info->flags & SECT_4K_PMC) {
+	if (sfdp_flags & SECT_4K_PMC) {
 		erase_mask |= BIT(i);
 		spi_nor_set_erase_type(&map->erase_type[i], 4096u,
 				       SPINOR_OP_BE_4K_PMC);
 		i++;
-	} else if (info->flags & SECT_4K) {
+	} else if (sfdp_flags & SECT_4K) {
 		erase_mask |= BIT(i);
 		spi_nor_set_erase_type(&map->erase_type[i], 4096u,
 				       SPINOR_OP_BE_4K);
@@ -2712,9 +2713,11 @@ static int spi_nor_init_params(struct spi_nor *nor)
 
 	spi_nor_manufacturer_init_params(nor);
 
-	if ((nor->info->flags & (SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
-				 SPI_NOR_OCTAL_READ | SPI_NOR_OCTAL_DTR_READ)) &&
-	    !(nor->info->flags & SPI_NOR_SKIP_SFDP))
+	if ((nor->info->parse_sfdp ||
+	    (nor->info->sfdp_flags & (SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ |
+				      SPI_NOR_OCTAL_READ |
+				      SPI_NOR_OCTAL_DTR_READ))) &&
+	    !(nor->info->sfdp_flags & SPI_NOR_SKIP_SFDP))
 		spi_nor_sfdp_init_params(nor);
 
 	spi_nor_late_init_params(nor);
@@ -3068,7 +3071,7 @@ static void spi_nor_set_mtd_info(struct spi_nor *nor)
 		mtd->name = dev_name(dev);
 	mtd->type = MTD_NORFLASH;
 	mtd->flags = MTD_CAP_NORFLASH;
-	if (nor->info->flags & SPI_NOR_NO_ERASE)
+	if (nor->info->non_sfdp_flags & SPI_NOR_NO_ERASE)
 		mtd->flags |= MTD_NO_ERASE;
 	mtd->writesize = nor->params->writesize;
 	mtd->writebufsize = nor->params->page_size;
@@ -3093,6 +3096,8 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	struct device_node *np = spi_nor_get_flash_node(nor);
 	int ret;
 	int i;
+	u16 non_sfdp_flags;
+	u8 fixup_flags;
 
 	ret = spi_nor_check(nor);
 	if (ret)
@@ -3122,6 +3127,7 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 		return PTR_ERR(info);
 
 	nor->info = info;
+	non_sfdp_flags = info->non_sfdp_flags;
 
 	spi_nor_debugfs_init(nor, info);
 
@@ -3132,10 +3138,10 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	 * spi_nor_wait_till_ready(). Xilinx S3AN share MFR
 	 * with Atmel SPI NOR.
 	 */
-	if (info->flags & SPI_NOR_XSR_RDY)
+	if (non_sfdp_flags & SPI_NOR_XSR_RDY)
 		nor->flags |=  SNOR_F_READY_XSR_RDY;
 
-	if (info->flags & SPI_NOR_HAS_LOCK)
+	if (non_sfdp_flags & SPI_NOR_HAS_LOCK)
 		nor->flags |= SNOR_F_HAS_LOCK;
 
 	/* Init flash parameters based on flash_info struct and SFDP */
@@ -3143,24 +3149,24 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	if (ret)
 		return ret;
 
-	if (info->flags & USE_FSR)
+	if (non_sfdp_flags & USE_FSR)
 		nor->flags |= SNOR_F_USE_FSR;
-	if (info->flags & SPI_NOR_HAS_TB) {
+	if (non_sfdp_flags & SPI_NOR_HAS_TB) {
 		nor->flags |= SNOR_F_HAS_SR_TB;
-		if (info->flags & SPI_NOR_TB_SR_BIT6)
+		if (non_sfdp_flags & SPI_NOR_TB_SR_BIT6)
 			nor->flags |= SNOR_F_HAS_SR_TB_BIT6;
 	}
 
-	if (info->flags & NO_CHIP_ERASE)
+	if (non_sfdp_flags & NO_CHIP_ERASE)
 		nor->flags |= SNOR_F_NO_OP_CHIP_ERASE;
-	if (info->flags & USE_CLSR)
+	if (non_sfdp_flags & USE_CLSR)
 		nor->flags |= SNOR_F_USE_CLSR;
-	if (info->flags & SPI_NOR_SWP_IS_VOLATILE)
+	if (non_sfdp_flags & SPI_NOR_SWP_IS_VOLATILE)
 		nor->flags |= SNOR_F_SWP_IS_VOLATILE;
 
-	if (info->flags & SPI_NOR_4BIT_BP) {
+	if (non_sfdp_flags & SPI_NOR_4BIT_BP) {
 		nor->flags |= SNOR_F_HAS_4BIT_BP;
-		if (info->flags & SPI_NOR_BP3_SR_BIT6)
+		if (non_sfdp_flags & SPI_NOR_BP3_SR_BIT6)
 			nor->flags |= SNOR_F_HAS_SR_BP3_BIT6;
 	}
 
@@ -3177,10 +3183,11 @@ int spi_nor_scan(struct spi_nor *nor, const char *name,
 	if (ret)
 		return ret;
 
-	if (info->flags & SPI_NOR_4B_OPCODES)
+	fixup_flags = info->fixup_flags;
+	if (fixup_flags & SPI_NOR_4B_OPCODES)
 		nor->flags |= SNOR_F_4B_OPCODES;
 
-	if (info->flags & SPI_NOR_IO_MODE_EN_VOLATILE)
+	if (fixup_flags & SPI_NOR_IO_MODE_EN_VOLATILE)
 		nor->flags |= SNOR_F_IO_MODE_EN_VOLATILE;
 
 	ret = spi_nor_set_addr_width(nor);
