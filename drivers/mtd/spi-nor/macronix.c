@@ -69,7 +69,7 @@ static const struct flash_info macronix_parts[] = {
 	{ "mx25u12835f", INFO(0xc22538, 0, 64 * 1024, 256)
 		SFDP_FLAGS(SECT_4K | SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ) },
 	{ "mx25l25635e", INFO(0xc22019, 0, 64 * 1024, 512)
-		SFDP_FLAGS(SPI_NOR_DUAL_READ | SPI_NOR_QUAD_READ)
+		PARSE_SFDP
 		.fixups = &mx25l25635_fixups },
 	{ "mx25u25635f", INFO(0xc22539, 0, 64 * 1024, 512)
 		SFDP_FLAGS(SECT_4K)
