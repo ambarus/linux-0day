@@ -123,6 +123,65 @@
 	};
 };
 
+&ebi {
+	pinctrl-names = "default";
+	pinctrl-0 = <&pinctrl_nand_default>;
+	status = "disabled"; /* conflicts with flx7 and sdmmc2. */
+
+	nand_controller: nand-controller {
+		status = "disabled";
+
+		nand@3 {
+			reg = <0x3 0x0 0x2>;
+			atmel,rb = <0>;
+			nand-ecc-mode = "hw";
+			nand-on-flash-bbt;
+			label = "atmel_nand";
+
+			partitions {
+				compatible = "fixed-partitions";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				at91bootstrap@0 {
+					label = "bootstrap";
+					reg = <0x0 0x40000>;
+				};
+
+				bootloader@40000 {
+					label = "bootloader";
+					reg = <0x40000 0xc0000>;
+				};
+
+				bootloaderenvred@100000 {
+					label = "bootloader env redundant";
+					reg = <0x100000 0x40000>;
+				};
+
+				bootloaderenv@140000 {
+					label = "bootloader env";
+					reg = <0x140000 0x40000>;
+				};
+
+				dtb@180000 {
+					label = "device tree";
+					reg = <0x180000 0x80000>;
+				};
+
+				kernel@200000 {
+					label = "kernel";
+					reg = <0x200000 0x600000>;
+				};
+
+				rootfs@800000 {
+					label = "rootfs";
+					reg = <0x800000 0x1f800000>;
+				};
+			};
+		};
+	};
+};
+
 &adc {
 	vddana-supply = <&vddout25>;
 	vref-supply = <&vddout25>;
@@ -454,6 +513,30 @@
 };
 
 &pioA {
+	pinctrl_nand_default: nand_default {
+		re_we_data {
+			pinmux = <PIN_PD9__D0>,
+				 <PIN_PD10__D1>,
+				 <PIN_PD11__D2>,
+				 <PIN_PC21__D3>,
+				 <PIN_PC22__D4>,
+				 <PIN_PC23__D5>,
+				 <PIN_PC24__D6>,
+				 <PIN_PD2__D7>,
+				 <PIN_PD5__NWE_NWR0_NANDWE>,
+				 <PIN_PD6__NRD_NANDOE>;
+			bias-pull-up;
+		};
+
+		ale_cle_rdy_cs {
+			pinmux = <PIN_PD7__A21_NANDALE>,
+				 <PIN_PD8__A11_NANDCLE>,
+				 <PIN_PD3__NANDRDY>,
+				 <PIN_PD4__NCS3_NANDCS>;
+			bias-pull-up;
+		};
+	};
+
 	pinctrl_flx0_default: flx0_default {
 		pinmux = <PIN_PE3__FLEXCOM0_IO0>,
 			 <PIN_PE4__FLEXCOM0_IO1>,
