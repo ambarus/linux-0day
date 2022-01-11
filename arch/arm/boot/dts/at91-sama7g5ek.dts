@@ -126,10 +126,10 @@
 &ebi {
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_nand_default>;
-	status = "disabled"; /* conflicts with flx7 and sdmmc2. */
+	status = "okay"; /* conflicts with flx7 and sdmmc2. */
 
 	nand_controller: nand-controller {
-		status = "disabled";
+		status = "okay";
 
 		nand@3 {
 			reg = <0x3 0x0 0x2>;
@@ -424,7 +424,7 @@
 
 &flx7 {
 	atmel,flexcom-mode = <ATMEL_FLEXCOM_MODE_USART>;
-	status = "okay";
+	status = "disabled";
 
 	uart7: serial@200 {
 		pinctrl-names = "default";
@@ -820,6 +820,7 @@
 	sdhci-caps-mask = <0x0 0x00200000>;
 	pinctrl-names = "default";
 	pinctrl-0 = <&pinctrl_sdmmc2_default>;
+	status = "disabled";
 };
 
 &shdwc {
