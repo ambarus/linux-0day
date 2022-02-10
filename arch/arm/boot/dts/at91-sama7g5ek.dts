@@ -525,7 +525,8 @@
 				 <PIN_PD2__D7>,
 				 <PIN_PD5__NWE_NWR0_NANDWE>,
 				 <PIN_PD6__NRD_NANDOE>;
-			bias-pull-up;
+			slew-rate = <0>;
+			bias-disable;
 		};
 
 		ale_cle_rdy_cs {
@@ -533,7 +534,8 @@
 				 <PIN_PD8__A11_NANDCLE>,
 				 <PIN_PD3__NANDRDY>,
 				 <PIN_PD4__NCS3_NANDCS>;
-			bias-pull-up;
+			slew-rate = <0>;
+			bias-disable;
 		};
 	};
 
