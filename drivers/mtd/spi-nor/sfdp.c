@@ -579,6 +579,7 @@ int spi_nor_set_4byte_addr_mode_wren_en4b_ex4b(struct spi_nor *nor, bool enable)
 #define BFPT_DWORD18_CMD_EXT_INV		(0x1UL << 29) /* Invert */
 #define BFPT_DWORD18_CMD_EXT_RES		(0x2UL << 29) /* Reserved */
 #define BFPT_DWORD18_CMD_EXT_16B		(0x3UL << 29) /* 16-bit opcode */
+#define BFPT_DWORD18_BYTE_ORDER_SWAPPED		BIT(31)
 
 /**
  * spi_nor_parse_bfpt() - read and parse the Basic Flash Parameter Table.
@@ -831,6 +832,9 @@ static int spi_nor_parse_bfpt(struct spi_nor *nor,
 		dev_dbg(nor->dev, "16-bit opcodes not supported\n");
 		return -EOPNOTSUPP;
 	}
+
+	if (bfpt.dwords[BFPT_DWORD(18)] & BFPT_DWORD18_BYTE_ORDER_SWAPPED)
+		nor->flags |= SNOR_F_DTR_SWAB16;
 
 	return spi_nor_post_bfpt_fixups(nor, bfpt_header, &bfpt);
 }
