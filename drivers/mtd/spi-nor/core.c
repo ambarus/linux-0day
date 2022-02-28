@@ -2639,8 +2639,17 @@ static int spi_nor_init_params(struct spi_nor *nor)
 	if (nor->info->parse_sfdp) {
 		ret = spi_nor_parse_sfdp(nor);
 		if (ret) {
-			dev_err(nor->dev, "BFPT parsing failed. Please consider using SPI_NOR_SKIP_SFDP when declaring the flash\n");
-			return ret;
+			/*
+			 * Handle ID collisions between flashes that support
+			 * SFDP and flashes that don't. Initialize parameters
+			 * for the flash that doesn't support SFDP.
+			 */
+			if (nor->info->no_sfdp_flags & ~SPI_NOR_SKIP_SFDP) {
+				spi_nor_no_sfdp_init_params(nor);
+			} else {
+				dev_err(nor->dev, "BFPT parsing failed. Please consider using SPI_NOR_SKIP_SFDP when declaring the flash\n");
+				return ret;
+			}
 		}
 	} else if (nor->info->no_sfdp_flags & SPI_NOR_SKIP_SFDP) {
 		spi_nor_no_sfdp_init_params(nor);
