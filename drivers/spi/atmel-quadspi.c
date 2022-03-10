@@ -933,6 +933,7 @@ static int atmel_qspi_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 	u32 offset;
 	int err;
 
+	dev_err(&aq->pdev->dev, "op->cmd.opcode = %04x\n", op->cmd.opcode);
 	/*
 	 * Check if the address exceeds the MMIO window size. An improvement
 	 * would be to add support for regular SPI mode and fall back to it
@@ -955,6 +956,11 @@ static const char *atmel_qspi_get_name(struct spi_mem *spimem)
 {
 	return dev_name(spimem->spi->dev.parent);
 }
+
+static const struct spi_controller_mem_caps atmel_qspi_sama7g5_mem_caps = {
+	.dtr = true,
+	.dtr_swab16 = true,
+};
 
 static const struct spi_controller_mem_ops atmel_qspi_mem_ops = {
 	.supports_op = atmel_qspi_supports_op,
@@ -1279,6 +1285,8 @@ static int atmel_qspi_probe(struct platform_device *pdev)
 	ctrl->setup = atmel_qspi_setup;
 	ctrl->bus_num = -1;
 	ctrl->mem_ops = &atmel_qspi_mem_ops;
+	if (aq->caps->octal)
+		ctrl->mem_caps = &atmel_qspi_sama7g5_mem_caps;
 	ctrl->num_chipselect = 1;
 	ctrl->dev.of_node = pdev->dev.of_node;
 	platform_set_drvdata(pdev, ctrl);
