@@ -455,6 +455,9 @@ static bool atmel_qspi_supports_op(struct spi_mem *mem,
 {
 	struct atmel_qspi *aq = spi_controller_get_devdata(mem->spi->master);
 
+	if (!spi_mem_default_supports_op(mem, op))
+		return false;
+
 	if (aq->caps->octal) {
 		if (atmel_qspi_sama7g5_find_mode(op) < 0)
 			return false;
@@ -470,7 +473,7 @@ static bool atmel_qspi_supports_op(struct spi_mem *mem,
 		op->dummy.nbytes == 0)
 		return false;
 
-	return spi_mem_default_supports_op(mem, op);
+	return true;
 }
 
 static int atmel_qspi_set_cfg(struct atmel_qspi *aq,
