@@ -285,13 +285,7 @@ static bool atmel_qspi_supports_op(struct spi_mem *mem,
 		op->dummy.nbytes == 0)
 		return false;
 
-	/* DTR ops not supported. */
-	if (op->cmd.dtr || op->addr.dtr || op->dummy.dtr || op->data.dtr)
-		return false;
-	if (op->cmd.nbytes != 1)
-		return false;
-
-	return true;
+	return spi_mem_default_supports_op(mem, op);
 }
 
 static int atmel_qspi_set_cfg(struct atmel_qspi *aq,
