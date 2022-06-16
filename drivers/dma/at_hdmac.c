@@ -187,10 +187,10 @@ static void atc_desc_put(struct at_dma_chan *atchan, struct at_desc *desc)
 			dev_vdbg(chan2dev(&atchan->chan_common),
 					"moving child desc %p to freelist\n",
 					child);
-		list_splice_init(&desc->tx_list, &atchan->free_list);
+		list_splice_tail_init(&desc->tx_list, &atchan->free_list);
 		dev_vdbg(chan2dev(&atchan->chan_common),
 			 "moving desc %p to freelist\n", desc);
-		list_add(&desc->desc_node, &atchan->free_list);
+		list_add_tail(&desc->desc_node, &atchan->free_list);
 		spin_unlock_irqrestore(&atchan->lock, flags);
 	}
 }
@@ -469,11 +469,6 @@ atc_chain_complete(struct at_dma_chan *atchan, struct at_desc *desc)
 		desc->memset_buffer = false;
 	}
 
-	/* move children to free_list */
-	list_splice_init(&desc->tx_list, &atchan->free_list);
-	/* move myself to free_list */
-	list_move(&desc->desc_node, &atchan->free_list);
-
 	spin_unlock_irqrestore(&atchan->lock, flags);
 
 	dma_descriptor_unmap(txd);
@@ -483,42 +478,13 @@ atc_chain_complete(struct at_dma_chan *atchan, struct at_desc *desc)
 		dmaengine_desc_get_callback_invoke(txd, NULL);
 
 	dma_run_dependencies(txd);
-}
-
-/**
- * atc_complete_all - finish work for all transactions
- * @atchan: channel to complete transactions for
- *
- * Eventually submit queued descriptors if any
- *
- * Assume channel is idle while calling this function
- * Called with atchan->lock held and bh disabled
- */
-static void atc_complete_all(struct at_dma_chan *atchan)
-{
-	struct at_desc *desc, *_desc;
-	LIST_HEAD(list);
-	unsigned long flags;
-
-	dev_vdbg(chan2dev(&atchan->chan_common), "complete all\n");
 
 	spin_lock_irqsave(&atchan->lock, flags);
-
-	/*
-	 * Submit queued descriptors ASAP, i.e. before we go through
-	 * the completed ones.
-	 */
-	if (!list_empty(&atchan->queue))
-		atc_dostart(atchan, atc_first_queued(atchan));
-	/* empty active_list now it is completed */
-	list_splice_init(&atchan->active_list, &list);
-	/* empty queue list by moving descriptors (if any) to active_list */
-	list_splice_init(&atchan->queue, &atchan->active_list);
-
+	/* move myself to free_list */
+	list_move_tail(&desc->desc_node, &atchan->free_list);
+	/* move children to free_list */
+	list_splice_tail_init(&desc->tx_list, &atchan->free_list);
 	spin_unlock_irqrestore(&atchan->lock, flags);
-
-	list_for_each_entry_safe(desc, _desc, &list, desc_node)
-		atc_chain_complete(atchan, desc);
 }
 
 /**
@@ -527,29 +493,49 @@ static void atc_complete_all(struct at_dma_chan *atchan)
  */
 static void atc_advance_work(struct at_dma_chan *atchan)
 {
-	unsigned long flags;
-	int ret;
+	struct at_dma *atdma = to_at_dma(atchan->chan_common.device);
+	struct dma_async_tx_descriptor *txd;
+	struct at_desc *desc;
 
 	dev_vdbg(chan2dev(&atchan->chan_common), "advance_work\n");
 
-	spin_lock_irqsave(&atchan->lock, flags);
-	ret = atc_chan_is_enabled(atchan);
-	spin_unlock_irqrestore(&atchan->lock, flags);
-	if (ret)
-		return;
+	spin_lock_irq(&atchan->lock);
+	if (atc_chan_is_enabled(atchan) || list_empty(&atchan->active_list))
+		return spin_unlock_irq(&atchan->lock);
 
-	if (list_empty(&atchan->active_list) ||
-	    list_is_singular(&atchan->active_list))
-		return atc_complete_all(atchan);
+	desc = atc_first_active(atchan);
 
-	atc_chain_complete(atchan, atc_first_active(atchan));
+	txd = &desc->txd;
+	dma_cookie_complete(txd);
+	/* Remove the transfer from the transfer list. */
+	list_del(&desc->desc_node);
 
-	/* advance work */
-	spin_lock_irqsave(&atchan->lock, flags);
-	atc_dostart(atchan, atc_first_active(atchan));
-	spin_unlock_irqrestore(&atchan->lock, flags);
+	/* If the transfer was a memset, free our temporary buffer */
+	if (desc->memset_buffer) {
+		dma_pool_free(atdma->memset_pool, desc->memset_vaddr,
+			      desc->memset_paddr);
+		desc->memset_buffer = false;
+	}
+
+	spin_unlock_irq(&atchan->lock);
+
+	dma_descriptor_unmap(txd);
+	if (txd->flags & DMA_PREP_INTERRUPT)
+		dmaengine_desc_get_callback_invoke(txd, NULL);
+
+	dma_run_dependencies(txd);
+
+	spin_lock_irq(&atchan->lock);
+	/* move myself to free_list */
+	list_add_tail(&desc->desc_node, &atchan->free_list);
+	/* move children to free_list */
+	list_splice_tail_init(&desc->tx_list, &atchan->free_list);
+	if (atc_chan_is_enabled(atchan) || list_empty(&atchan->active_list))
+		return spin_unlock_irq(&atchan->lock);
+	desc = atc_first_active(atchan);
+	atc_dostart(atchan, desc);
+	spin_unlock_irq(&atchan->lock);
 }
-
 
 /**
  * atc_handle_error - handle errors reported by DMA controller
@@ -1525,10 +1511,20 @@ atc_tx_status(struct dma_chan *chan,
 static void atc_issue_pending(struct dma_chan *chan)
 {
 	struct at_dma_chan	*atchan = to_at_dma_chan(chan);
+	struct at_desc *desc;
+	unsigned long flags;
 
 	dev_vdbg(chan2dev(chan), "issue_pending\n");
+	spin_lock_irqsave(&atchan->lock, flags);
+	if (atc_chan_is_enabled(atchan) || list_empty(&atchan->queue)) {
+		spin_unlock_irqrestore(&atchan->lock, flags);
+		return;
+	}
 
-	atc_advance_work(atchan);
+	desc = atc_first_queued(atchan);
+	list_move_tail(&desc->desc_node, &atchan->active_list);
+	atc_dostart(atchan, desc);
+	spin_unlock_irqrestore(&atchan->lock, flags);
 }
 
 /**
@@ -1618,7 +1614,7 @@ static void atc_free_chan_resources(struct dma_chan *chan)
 		/* free link descriptor */
 		dma_pool_free(atdma->dma_desc_pool, desc, desc->txd.phys);
 	}
-	list_splice_init(&atchan->free_list, &list);
+	list_splice_tail_init(&atchan->free_list, &list);
 	atchan->status = 0;
 
 	/*
