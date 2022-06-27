@@ -155,6 +155,7 @@ static struct at_desc *atc_desc_get(struct at_dma_chan *atchan)
 		i++;
 		if (async_tx_test_ack(&desc->txd)) {
 			list_del(&desc->desc_node);
+			memset(&desc->lli, 0, sizeof(desc->lli));
 			desc->active_xfer = false;
 			ret = desc;
 			break;
