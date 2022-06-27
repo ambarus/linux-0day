@@ -133,6 +133,7 @@ static struct at_desc *atc_alloc_descriptor(struct dma_chan *chan,
 		desc->txd.flags = DMA_CTRL_ACK;
 		desc->txd.tx_submit = atc_tx_submit;
 		desc->txd.phys = phys;
+		desc->active_xfer = false;
 	}
 
 	return desc;
@@ -154,6 +155,7 @@ static struct at_desc *atc_desc_get(struct at_dma_chan *atchan)
 		i++;
 		if (async_tx_test_ack(&desc->txd)) {
 			list_del(&desc->desc_node);
+			desc->active_xfer = false;
 			ret = desc;
 			break;
 		}
@@ -190,6 +192,7 @@ static void atc_desc_put(struct at_dma_chan *atchan, struct at_desc *desc)
 		list_splice_tail_init(&desc->tx_list, &atchan->free_list);
 		dev_vdbg(chan2dev(&atchan->chan_common),
 			 "moving desc %p to freelist\n", desc);
+		desc->active_xfer = false;
 		list_add_tail(&desc->desc_node, &atchan->free_list);
 		spin_unlock_irqrestore(&atchan->lock, flags);
 	}
@@ -228,6 +231,9 @@ static void atc_desc_chain(struct at_desc **first, struct at_desc **prev,
 static void atc_dostart(struct at_dma_chan *atchan, struct at_desc *first)
 {
 	struct at_dma	*atdma = to_at_dma(atchan->chan_common.device);
+
+	/* Set transfer as active to not try to start it again. */
+	first->active_xfer = true;
 
 	/* ASSERT:  channel is idle */
 	if (atc_chan_is_enabled(atchan)) {
@@ -482,6 +488,7 @@ atc_chain_complete(struct at_dma_chan *atchan, struct at_desc *desc)
 	spin_lock_irqsave(&atchan->lock, flags);
 	/* move myself to free_list */
 	list_move_tail(&desc->desc_node, &atchan->free_list);
+	desc->active_xfer = false;
 	/* move children to free_list */
 	list_splice_tail_init(&desc->tx_list, &atchan->free_list);
 	spin_unlock_irqrestore(&atchan->lock, flags);
@@ -504,6 +511,10 @@ static void atc_advance_work(struct at_dma_chan *atchan)
 		return spin_unlock_irq(&atchan->lock);
 
 	desc = atc_first_active(atchan);
+	if (!desc->active_xfer) {
+		dev_err(chan2dev(&atchan->chan_common), "Xfer not active: exiting");
+		return spin_unlock_irq(&atchan->lock);
+	}
 
 	txd = &desc->txd;
 	dma_cookie_complete(txd);
@@ -533,7 +544,8 @@ static void atc_advance_work(struct at_dma_chan *atchan)
 	if (atc_chan_is_enabled(atchan) || list_empty(&atchan->active_list))
 		return spin_unlock_irq(&atchan->lock);
 	desc = atc_first_active(atchan);
-	atc_dostart(atchan, desc);
+	if (!desc->active_xfer)
+		atc_dostart(atchan, desc);
 	spin_unlock_irq(&atchan->lock);
 }
 
@@ -1522,8 +1534,12 @@ static void atc_issue_pending(struct dma_chan *chan)
 	}
 
 	desc = atc_first_queued(atchan);
-	list_move_tail(&desc->desc_node, &atchan->active_list);
-	atc_dostart(atchan, desc);
+	if (desc->active_xfer)
+		return spin_unlock_irqrestore(&atchan->lock, flags);
+	if (!desc->active_xfer) {
+		list_move_tail(&desc->desc_node, &atchan->active_list);
+		atc_dostart(atchan, desc);
+	}
 	spin_unlock_irqrestore(&atchan->lock, flags);
 }
 

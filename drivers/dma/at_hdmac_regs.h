@@ -213,6 +213,7 @@ struct at_desc {
 	struct list_head		desc_node;
 	size_t				len;
 	size_t				total_len;
+	bool active_xfer;
 
 	/* Interleaved data */
 	size_t				boundary;
