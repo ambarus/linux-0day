@@ -29,7 +29,7 @@ dma_cookie_t vchan_tx_submit(struct dma_async_tx_descriptor *tx)
 	list_move_tail(&vd->node, &vc->desc_submitted);
 	spin_unlock_irqrestore(&vc->lock, flags);
 
-	dev_dbg(vc->chan.device->dev, "vchan %p: txd %p[%x]: submitted\n",
+	dev_dbg(vc->chan.device->dev, "dma vchan %p: txd %p[%x]: submitted\n",
 		vc, vd, cookie);
 
 	return cookie;
