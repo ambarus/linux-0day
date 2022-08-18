@@ -1187,7 +1187,6 @@ static int s3c24xx_dma_probe(struct platform_device *pdev)
 	const struct s3c24xx_dma_platdata *pdata = dev_get_platdata(&pdev->dev);
 	struct s3c24xx_dma_engine *s3cdma;
 	struct soc_data *sdata;
-	struct resource *res;
 	int ret;
 	int i;
 
@@ -1215,8 +1214,7 @@ static int s3c24xx_dma_probe(struct platform_device *pdev)
 	s3cdma->pdata = pdata;
 	s3cdma->sdata = sdata;
 
-	res = platform_get_resource(pdev, IORESOURCE_MEM, 0);
-	s3cdma->base = devm_ioremap_resource(&pdev->dev, res);
+	s3cdma->base = devm_platform_ioremap_resource(pdev, 0);
 	if (IS_ERR(s3cdma->base))
 		return PTR_ERR(s3cdma->base);
 
