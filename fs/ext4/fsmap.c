@@ -479,6 +479,8 @@ static int ext4_getfsmap_datadev(struct super_block *sb,
 	int error = 0;
 
 	bofs = le32_to_cpu(sbi->s_es->s_first_data_block);
+	if (keys[1].fmr_physical <= bofs)
+		return 0;
 	eofs = ext4_blocks_count(sbi->s_es);
 	if (keys[0].fmr_physical >= eofs)
 		return 0;
