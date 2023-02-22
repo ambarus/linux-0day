@@ -9,6 +9,7 @@
 #include "fsmap.h"
 #include "mballoc.h"
 #include <linux/sort.h>
+#include <linux/string.h>
 #include <linux/list_sort.h>
 #include <trace/events/ext4.h>
 
@@ -571,7 +572,7 @@ err:
 
 /* Do we recognize the device? */
 static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
-					  struct ext4_fsmap *fm)
+					  struct fsmap *fm)
 {
 	if (fm->fmr_device == 0 || fm->fmr_device == UINT_MAX ||
 	    fm->fmr_device == new_encode_dev(sb->s_bdev->bd_dev))
@@ -583,17 +584,19 @@ static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
 }
 
 /* Ensure that the low key is less than the high key. */
-static bool ext4_getfsmap_check_keys(struct ext4_fsmap *low_key,
-				     struct ext4_fsmap *high_key)
+static bool ext4_getfsmap_check_keys(struct fsmap *low_key,
+				     struct fsmap *high_key)
 {
+	u64 l_fmr_phys = low_key->fmr_physical + low_key->fmr_length;
+
 	if (low_key->fmr_device > high_key->fmr_device)
 		return false;
 	if (low_key->fmr_device < high_key->fmr_device)
 		return true;
 
-	if (low_key->fmr_physical > high_key->fmr_physical)
+	if (l_fmr_phys > high_key->fmr_physical)
 		return false;
-	if (low_key->fmr_physical < high_key->fmr_physical)
+	if (l_fmr_phys < high_key->fmr_physical)
 		return true;
 
 	if (low_key->fmr_owner > high_key->fmr_owner)
@@ -602,6 +605,34 @@ static bool ext4_getfsmap_check_keys(struct ext4_fsmap *low_key,
 		return true;
 
 	return false;
+}
+
+int ext4_fsmap_check_head(struct super_block *sb, struct fsmap_head *head)
+{
+	const struct fsmap *l = &head->fmh_keys[0];
+	const struct fsmap *h = &head->fmh_keys[1];
+
+	if (head->fmh_iflags & ~FMH_IF_VALID)
+		return -EINVAL;
+	if (memchr_inv(head->fmh_reserved, 0, sizeof(head->fmh_reserved)) ||
+	    memchr_inv(l->fmr_reserved, 0, sizeof(l->fmr_reserved)) ||
+	    memchr_inv(h->fmr_reserved, 0, sizeof(h->fmr_reserved)))
+		return -EINVAL;
+	/*
+	 * ext4 doesn't report file extents at all, so the only valid
+	 * file offsets are the magic ones (all zeroes or all ones).
+	 */
+	if (l->fmr_offset || (h->fmr_offset != 0 && h->fmr_offset != -1ULL))
+		return -EINVAL;
+
+	if (!ext4_getfsmap_is_valid_device(sb, l) ||
+	    !ext4_getfsmap_is_valid_device(sb, h))
+		return -EINVAL;
+
+	if (!ext4_getfsmap_check_keys(l, h))
+		return -EINVAL;
+
+	return 0;
 }
 
 #define EXT4_GETFSMAP_DEVS	2
@@ -635,10 +666,6 @@ int ext4_getfsmap(struct super_block *sb, struct ext4_fsmap_head *head,
 	int i;
 	int error = 0;
 
-	if (!ext4_getfsmap_is_valid_device(sb, &head->fmh_keys[0]) ||
-	    !ext4_getfsmap_is_valid_device(sb, &head->fmh_keys[1]))
-		return -EINVAL;
-
 	head->fmh_entries = 0;
 
 	/* Set up our device handlers. */
@@ -670,9 +697,6 @@ int ext4_getfsmap(struct super_block *sb, struct ext4_fsmap_head *head,
 	dkeys[0].fmr_owner = 0;
 	dkeys[0].fmr_length = 0;
 	memset(&dkeys[1], 0xFF, sizeof(struct ext4_fsmap));
-
-	if (!ext4_getfsmap_check_keys(dkeys, &head->fmh_keys[1]))
-		return -EINVAL;
 
 	info.gfi_next_fsblk = head->fmh_keys[0].fmr_physical +
 			  head->fmh_keys[0].fmr_length;

@@ -872,22 +872,9 @@ static int ext4_ioc_getfsmap(struct super_block *sb,
 
 	if (copy_from_user(&head, arg, sizeof(struct fsmap_head)))
 		return -EFAULT;
-	if (head.fmh_iflags & ~FMH_IF_VALID)
-		return -EINVAL;
-	if (memchr_inv(head.fmh_reserved, 0, sizeof(head.fmh_reserved)) ||
-	    memchr_inv(head.fmh_keys[0].fmr_reserved, 0,
-		       sizeof(head.fmh_keys[0].fmr_reserved)) ||
-	    memchr_inv(head.fmh_keys[1].fmr_reserved, 0,
-		       sizeof(head.fmh_keys[1].fmr_reserved)))
-		return -EINVAL;
-	/*
-	 * ext4 doesn't report file extents at all, so the only valid
-	 * file offsets are the magic ones (all zeroes or all ones).
-	 */
-	if (head.fmh_keys[0].fmr_offset ||
-	    (head.fmh_keys[1].fmr_offset != 0 &&
-	     head.fmh_keys[1].fmr_offset != -1ULL))
-		return -EINVAL;
+	error = ext4_fsmap_check_head(sb, &head);
+	if (error)
+		return error;
 
 	xhead.fmh_iflags = head.fmh_iflags;
 	xhead.fmh_count = head.fmh_count;
