@@ -9,6 +9,7 @@
  */
 
 #include <linux/bitops.h>
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/completion.h>
 #include <linux/dma-mapping.h>
@@ -282,16 +283,17 @@ static int rockchip_sfc_wait_rxfifo_ready(struct rockchip_sfc *sfc, u32 timeout_
 
 static void rockchip_sfc_adjust_op_work(struct spi_mem_op *op)
 {
-	if (unlikely(op->dummy.nbytes && !op->addr.nbytes)) {
+	if (unlikely(op->dummy.ncycles && !op->addr.nbytes)) {
 		/*
 		 * SFC not support output DUMMY cycles right after CMD cycles, so
 		 * treat it as ADDR cycles.
 		 */
-		op->addr.nbytes = op->dummy.nbytes;
+		op->addr.nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+				  BITS_PER_BYTE;
 		op->addr.buswidth = op->dummy.buswidth;
 		op->addr.val = 0xFFFFFFFFF;
 
-		op->dummy.nbytes = 0;
+		op->dummy.ncycles = 0;
 	}
 }
 
@@ -300,6 +302,7 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
 				   const struct spi_mem_op *op,
 				   u32 len)
 {
+	unsigned int dummy_nbytes;
 	u32 ctrl = 0, cmd = 0;
 
 	/* set CMD */
@@ -321,13 +324,15 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
 	}
 
 	/* set DUMMY */
-	if (op->dummy.nbytes) {
+	if (op->dummy.ncycles) {
+		dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+			       BITS_PER_BYTE;
 		if (op->dummy.buswidth == 4)
-			cmd |= op->dummy.nbytes * 2 << SFC_CMD_DUMMY_SHIFT;
+			cmd |= dummy_nbytes * 2 << SFC_CMD_DUMMY_SHIFT;
 		else if (op->dummy.buswidth == 2)
-			cmd |= op->dummy.nbytes * 4 << SFC_CMD_DUMMY_SHIFT;
+			cmd |= dummy_nbytes * 4 << SFC_CMD_DUMMY_SHIFT;
 		else
-			cmd |= op->dummy.nbytes * 8 << SFC_CMD_DUMMY_SHIFT;
+			cmd |= dummy_nbytes * 8 << SFC_CMD_DUMMY_SHIFT;
 	}
 
 	/* set DATA */
@@ -348,9 +353,9 @@ static int rockchip_sfc_xfer_setup(struct rockchip_sfc *sfc,
 	ctrl |= SFC_CTRL_PHASE_SEL_NEGETIVE;
 	cmd |= mem->spi->chip_select << SFC_CMD_CS_SHIFT;
 
-	dev_dbg(sfc->dev, "sfc addr.nbytes=%x(x%d) dummy.nbytes=%x(x%d)\n",
+	dev_dbg(sfc->dev, "sfc addr.nbytes=%x(x%d) dummy.ncycles=%x(x%d)\n",
 		op->addr.nbytes, op->addr.buswidth,
-		op->dummy.nbytes, op->dummy.buswidth);
+		op->dummy.ncycles, op->dummy.buswidth);
 	dev_dbg(sfc->dev, "sfc ctrl=%x cmd=%x addr=%llx len=%x\n",
 		ctrl, cmd, op->addr.val, len);
 

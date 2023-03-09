@@ -13,10 +13,10 @@
 #define MACRONIX_ECCSR_MASK		0x0F
 
 static SPINAND_OP_VARIANTS(read_cache_variants,
-		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 1, NULL, 0),
-		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 1, NULL, 0),
-		SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 1, NULL, 0),
-		SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 1, NULL, 0));
+		SPINAND_PAGE_READ_FROM_CACHE_X4_OP(0, 8, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_X2_OP(0, 8, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP(true, 0, 8, NULL, 0),
+		SPINAND_PAGE_READ_FROM_CACHE_OP(false, 0, 8, NULL, 0));
 
 static SPINAND_OP_VARIANTS(write_cache_variants,
 		SPINAND_PROG_LOAD_X4(true, 0, NULL, 0),
@@ -53,7 +53,7 @@ static int mx35lf1ge4ab_get_eccsr(struct spinand_device *spinand, u8 *eccsr)
 {
 	struct spi_mem_op op = SPI_MEM_OP(SPI_MEM_OP_CMD(0x7c, 1),
 					  SPI_MEM_OP_NO_ADDR,
-					  SPI_MEM_OP_DUMMY(1, 1),
+					  SPI_MEM_OP_DUMMY(8, 1),
 					  SPI_MEM_OP_DATA_IN(1, eccsr, 1));
 
 	int ret = spi_mem_exec_op(spinand->spimem, &op);

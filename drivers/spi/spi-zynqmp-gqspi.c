@@ -1113,14 +1113,14 @@ static int zynqmp_qspi_exec_op(struct spi_mem *mem,
 		}
 	}
 
-	if (op->dummy.nbytes) {
+	if (op->dummy.ncycles) {
 		xqspi->txbuf = NULL;
 		xqspi->rxbuf = NULL;
 		/*
 		 * xqspi->bytes_to_transfer here represents the dummy circles
 		 * which need to be sent.
 		 */
-		xqspi->bytes_to_transfer = op->dummy.nbytes * 8 / op->dummy.buswidth;
+		xqspi->bytes_to_transfer = op->dummy.ncycles;
 		xqspi->bytes_to_receive = 0;
 		/*
 		 * Using op->data.buswidth instead of op->dummy.buswidth here because

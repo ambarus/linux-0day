@@ -5,6 +5,7 @@
  * Copyright 2016 Broadcom
  */
 
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/device.h>
@@ -428,8 +429,8 @@ static int bcm_qspi_bspi_set_flex_mode(struct bcm_qspi *qspi,
 	if (addrlen == BSPI_ADDRLEN_4BYTES)
 		bpp = BSPI_BPP_ADDR_SELECT_MASK;
 
-	if (op->dummy.nbytes)
-		bpp |= (op->dummy.nbytes * 8) / op->dummy.buswidth;
+	if (op->dummy.ncycles)
+		bpp |= op->dummy.ncycles;
 
 	switch (width) {
 	case SPI_NBITS_SINGLE:
@@ -1153,6 +1154,7 @@ static int bcm_qspi_mspi_exec_mem_op(struct spi_device *spi,
 	struct spi_master *master = spi->master;
 	struct bcm_qspi *qspi = spi_master_get_devdata(master);
 	struct spi_transfer t[2];
+	unsigned int dummy_nbytes;
 	u8 cmd[6] = { };
 	int ret, i;
 
@@ -1166,7 +1168,8 @@ static int bcm_qspi_mspi_exec_mem_op(struct spi_device *spi,
 		cmd[1 + i] = op->addr.val >> (8 * (op->addr.nbytes - i - 1));
 
 	t[0].tx_buf = cmd;
-	t[0].len = op->addr.nbytes + op->dummy.nbytes + 1;
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	t[0].len = op->addr.nbytes + dummy_nbytes + 1;
 	t[0].bits_per_word = spi->bits_per_word;
 	t[0].tx_nbits = op->cmd.buswidth;
 	/* lets mspi know that this is not last transfer */

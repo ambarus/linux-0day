@@ -995,7 +995,7 @@ static int spinand_id_detect(struct spinand_device *spinand)
 	if (!ret)
 		return 0;
 
-	ret = spinand_read_id_op(spinand, 0, 1, id);
+	ret = spinand_read_id_op(spinand, 0, 8, id);
 	if (ret)
 		return ret;
 	ret = spinand_manufacturer_match(spinand,

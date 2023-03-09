@@ -8,6 +8,7 @@
 //	Boris Brezillon <boris.brezillon@bootlin.com>
 //
 
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/io.h>
 #include <linux/iopoll.h>
@@ -322,8 +323,9 @@ static u32 mxic_spi_mem_prep_op_cfg(const struct spi_mem_op *op,
 		       OP_ADDR_BUSW(fls(op->addr.buswidth) - 1) |
 		       (op->addr.dtr ? OP_ADDR_DDR : 0);
 
-	if (op->dummy.nbytes)
-		cfg |= OP_DUMMY_CYC(op->dummy.nbytes);
+	if (op->dummy.ncycles)
+		cfg |= OP_DUMMY_CYC((op->dummy.ncycles * op->dummy.buswidth) /
+				    BITS_PER_BYTE);
 
 	/* Direct mapping data.nbytes field is not populated */
 	if (data_len) {
@@ -481,7 +483,7 @@ static bool mxic_spi_mem_supports_op(struct spi_mem *mem,
 	    op->dummy.buswidth > 8 || op->cmd.buswidth > 8)
 		return false;
 
-	if (op->data.nbytes && op->dummy.nbytes &&
+	if (op->data.nbytes && op->dummy.ncycles &&
 	    op->data.buswidth != op->dummy.buswidth)
 		return false;
 
@@ -511,6 +513,7 @@ static int mxic_spi_mem_exec_op(struct spi_mem *mem,
 				const struct spi_mem_op *op)
 {
 	struct mxic_spi *mxic = spi_master_get_devdata(mem->spi->master);
+	unsigned int dummy_nbytes;
 	int i, ret;
 	u8 addr[8], cmd[2];
 
@@ -543,7 +546,8 @@ static int mxic_spi_mem_exec_op(struct spi_mem *mem,
 	if (ret)
 		goto out;
 
-	ret = mxic_spi_data_xfer(mxic, NULL, NULL, op->dummy.nbytes);
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	ret = mxic_spi_data_xfer(mxic, NULL, NULL, dummy_nbytes);
 	if (ret)
 		goto out;
 

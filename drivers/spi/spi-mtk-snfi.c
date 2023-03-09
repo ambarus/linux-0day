@@ -67,6 +67,7 @@
 //    [page_size - (nsectors - 1) * spare_size]
 // Similarly, when writing, we need to perform swaps in the other direction.
 
+#include <linux/bits.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/init.h>
@@ -461,6 +462,7 @@ static int mtk_snand_mac_io(struct mtk_snand *snf, const struct spi_mem_op *op)
 	u32 rx_len = 0;
 	u32 reg_offs = 0;
 	u32 val = 0;
+	unsigned int dummy_nbytes;
 	const u8 *tx_buf = NULL;
 	u8 *rx_buf = NULL;
 	int i, ret;
@@ -493,7 +495,8 @@ static int mtk_snand_mac_io(struct mtk_snand *snf, const struct spi_mem_op *op)
 		}
 	}
 
-	for (i = 0; i < op->dummy.nbytes; i++, reg_offs++) {
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	for (i = 0; i < dummy_nbytes; i++, reg_offs++) {
 		if (reg_offs % 4 == 3) {
 			nfi_write32(snf, SNF_GPRAM + reg_offs - 3, val);
 			val = 0;
@@ -866,7 +869,6 @@ static int mtk_snand_read_page_cache(struct mtk_snand *snf,
 	u32 op_addr = op->addr.val;
 	// where to start copying data from bounce buffer
 	u32 rd_offset = 0;
-	u32 dummy_clk = (op->dummy.nbytes * BITS_PER_BYTE / op->dummy.buswidth);
 	u32 op_mode = 0;
 	u32 dma_len = snf->buf_len;
 	int ret = 0;
@@ -900,7 +902,7 @@ static int mtk_snand_read_page_cache(struct mtk_snand *snf,
 
 	// command and dummy cycles
 	nfi_write32(snf, SNF_RD_CTL2,
-		    (dummy_clk << DATA_READ_DUMMY_S) |
+		    (op->dummy.ncycles << DATA_READ_DUMMY_S) |
 			    (op->cmd.opcode << DATA_READ_CMD_S));
 
 	// read address
@@ -1208,8 +1210,7 @@ static bool mtk_snand_is_page_ops(const struct spi_mem_op *op)
 	// match read from page instructions
 	if (op->data.dir == SPI_MEM_DATA_IN) {
 		// check dummy cycle first
-		if (op->dummy.nbytes * BITS_PER_BYTE / op->dummy.buswidth >
-		    DATA_READ_MAX_DUMMY)
+		if (op->dummy.ncycles > DATA_READ_MAX_DUMMY)
 			return false;
 		// quad io / quad out
 		if ((op->addr.buswidth == 4 || op->addr.buswidth == 1) &&
@@ -1226,7 +1227,7 @@ static bool mtk_snand_is_page_ops(const struct spi_mem_op *op)
 			return true;
 	} else if (op->data.dir == SPI_MEM_DATA_OUT) {
 		// check dummy cycle first
-		if (op->dummy.nbytes)
+		if (op->dummy.ncycles)
 			return false;
 		// program load quad out
 		if (op->addr.buswidth == 1 && op->data.buswidth == 4)
@@ -1248,13 +1249,14 @@ static bool mtk_snand_supports_op(struct spi_mem *mem,
 	if (mtk_snand_is_page_ops(op))
 		return true;
 	return ((op->addr.nbytes == 0 || op->addr.buswidth == 1) &&
-		(op->dummy.nbytes == 0 || op->dummy.buswidth == 1) &&
+		(op->dummy.ncycles == 0 || op->dummy.buswidth == 1) &&
 		(op->data.nbytes == 0 || op->data.buswidth == 1));
 }
 
 static int mtk_snand_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 {
 	struct mtk_snand *ms = spi_controller_get_devdata(mem->spi->master);
+	unsigned int dummy_nbytes;
 	// page ops transfer size must be exactly ((sector_size + spare_size) *
 	// nsectors). Limit the op size if the caller requests more than that.
 	// exec_op will read more than needed and discard the leftover if the
@@ -1269,7 +1271,9 @@ static int mtk_snand_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 		if (op->data.nbytes > l)
 			op->data.nbytes = l;
 	} else {
-		size_t hl = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
+		dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+			       BITS_PER_BYTE;
+		size_t hl = op->cmd.nbytes + op->addr.nbytes + dummy_nbytes;
 
 		if (hl >= SNF_GPRAM_SIZE)
 			return -EOPNOTSUPP;

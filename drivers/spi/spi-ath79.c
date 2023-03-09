@@ -8,6 +8,7 @@
  *	Copyright (C) 2006,2008 David Brownell
  */
 
+#include <linux/bits.h>
 #include <linux/kernel.h>
 #include <linux/module.h>
 #include <linux/delay.h>
@@ -138,14 +139,16 @@ static int ath79_exec_mem_op(struct spi_mem *mem,
 			     const struct spi_mem_op *op)
 {
 	struct ath79_spi *sp = ath79_spidev_to_sp(mem->spi);
+	unsigned int dummy_nbytes;
 
 	/* Ensures that reading is performed on device connected to hardware cs0 */
 	if (mem->spi->chip_select || mem->spi->cs_gpiod)
 		return -ENOTSUPP;
 
 	/* Only use for fast-read op. */
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
 	if (op->cmd.opcode != 0x0b || op->data.dir != SPI_MEM_DATA_IN ||
-	    op->addr.nbytes != 3 || op->dummy.nbytes != 1)
+	    op->addr.nbytes != 3 || dummy_nbytes != 1)
 		return -ENOTSUPP;
 
 	/* disable GPIO mode */

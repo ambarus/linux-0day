@@ -6,6 +6,7 @@
  * Author: Sourav Poddar <sourav.poddar@ti.com>
  */
 
+#include <linux/bits.h>
 #include <linux/kernel.h>
 #include <linux/init.h>
 #include <linux/interrupt.h>
@@ -578,6 +579,7 @@ static void ti_qspi_setup_mmap_read(struct spi_device *spi, u8 opcode,
 static int ti_qspi_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 {
 	struct ti_qspi *qspi = spi_controller_get_devdata(mem->spi->master);
+	unsigned int dummy_nbytes;
 	size_t max_len;
 
 	if (op->data.dir == SPI_MEM_DATA_IN) {
@@ -595,7 +597,9 @@ static int ti_qspi_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 			 * Adjust size to comply with the QSPI max frame length.
 			 */
 			max_len = QSPI_FRAME;
-			max_len -= 1 + op->addr.nbytes + op->dummy.nbytes;
+			dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+				       BITS_PER_BYTE;
+			max_len -= 1 + op->addr.nbytes + dummy_nbytes;
 			op->data.nbytes = min((size_t) op->data.nbytes,
 					      max_len);
 		}
@@ -608,6 +612,7 @@ static int ti_qspi_exec_mem_op(struct spi_mem *mem,
 			       const struct spi_mem_op *op)
 {
 	struct ti_qspi *qspi = spi_master_get_devdata(mem->spi->master);
+	unsigned int dummy_nbytes;
 	u32 from = 0;
 	int ret = 0;
 
@@ -627,8 +632,9 @@ static int ti_qspi_exec_mem_op(struct spi_mem *mem,
 		ti_qspi_setup_clk(qspi, mem->spi->max_speed_hz);
 		ti_qspi_enable_memory_map(mem->spi);
 	}
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
 	ti_qspi_setup_mmap_read(mem->spi, op->cmd.opcode, op->data.buswidth,
-				op->addr.nbytes, op->dummy.nbytes);
+				op->addr.nbytes, dummy_nbytes);
 
 	if (qspi->rx_chan) {
 		struct sg_table sgt;

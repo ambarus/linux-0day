@@ -847,10 +847,13 @@ static irqreturn_t mtk_spi_interrupt(int irq, void *dev_id)
 static int mtk_spi_mem_adjust_op_size(struct spi_mem *mem,
 				      struct spi_mem_op *op)
 {
+	unsigned int dummy_nbytes;
 	int opcode_len;
 
 	if (op->data.dir != SPI_MEM_NO_DATA) {
-		opcode_len = 1 + op->addr.nbytes + op->dummy.nbytes;
+		dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+			       BITS_PER_BYTE;
+		opcode_len = 1 + op->addr.nbytes + dummy_nbytes;
 		if (opcode_len + op->data.nbytes > MTK_SPI_IPM_PACKET_SIZE) {
 			op->data.nbytes = MTK_SPI_IPM_PACKET_SIZE - opcode_len;
 			/* force data buffer dma-aligned. */
@@ -864,14 +867,17 @@ static int mtk_spi_mem_adjust_op_size(struct spi_mem *mem,
 static bool mtk_spi_mem_supports_op(struct spi_mem *mem,
 				    const struct spi_mem_op *op)
 {
+	unsigned int dummy_nbytes;
+
 	if (!spi_mem_default_supports_op(mem, op))
 		return false;
 
-	if (op->addr.nbytes && op->dummy.nbytes &&
+	if (op->addr.nbytes && op->dummy.ncycles &&
 	    op->addr.buswidth != op->dummy.buswidth)
 		return false;
 
-	if (op->addr.nbytes + op->dummy.nbytes > 16)
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	if (op->addr.nbytes + dummy_nbytes > 16)
 		return false;
 
 	if (op->data.nbytes > MTK_SPI_IPM_PACKET_SIZE) {
@@ -944,6 +950,7 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 	struct mtk_spi *mdata = spi_master_get_devdata(mem->spi->master);
 	u32 reg_val, nio, tx_size;
 	char *tx_tmp_buf, *rx_tmp_buf;
+	unsigned int dummy_nbytes;
 	int ret = 0;
 
 	mdata->use_spimem = true;
@@ -959,9 +966,10 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 	reg_val |= 1 << SPI_CFG3_IPM_CMD_BYTELEN_OFFSET;
 
 	/* addr & dummy byte len */
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
 	reg_val &= ~SPI_CFG3_IPM_ADDR_BYTELEN_MASK;
-	if (op->addr.nbytes || op->dummy.nbytes)
-		reg_val |= (op->addr.nbytes + op->dummy.nbytes) <<
+	if (op->addr.nbytes || dummy_nbytes)
+		reg_val |= (op->addr.nbytes + dummy_nbytes) <<
 			    SPI_CFG3_IPM_ADDR_BYTELEN_OFFSET;
 
 	/* data byte len */
@@ -974,7 +982,7 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 		mtk_spi_setup_packet(mem->spi->master);
 	}
 
-	if (op->addr.nbytes || op->dummy.nbytes) {
+	if (op->addr.nbytes || dummy_nbytes) {
 		if (op->addr.buswidth == 1 || op->dummy.buswidth == 1)
 			reg_val |= SPI_CFG3_IPM_XMODE_EN;
 		else
@@ -1002,7 +1010,7 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 		reg_val &= ~SPI_CFG3_IPM_HALF_DUPLEX_DIR;
 	writel(reg_val, mdata->base + SPI_CFG3_IPM_REG);
 
-	tx_size = 1 + op->addr.nbytes + op->dummy.nbytes;
+	tx_size = 1 + op->addr.nbytes + dummy_nbytes;
 	if (op->data.dir == SPI_MEM_DATA_OUT)
 		tx_size += op->data.nbytes;
 
@@ -1024,13 +1032,13 @@ static int mtk_spi_mem_exec_op(struct spi_mem *mem,
 					(8 * (op->addr.nbytes - i - 1));
 	}
 
-	if (op->dummy.nbytes)
+	if (dummy_nbytes)
 		memset(tx_tmp_buf + op->addr.nbytes + 1,
 		       0xff,
-		       op->dummy.nbytes);
+		       dummy_nbytes);
 
 	if (op->data.nbytes && op->data.dir == SPI_MEM_DATA_OUT)
-		memcpy(tx_tmp_buf + op->dummy.nbytes + op->addr.nbytes + 1,
+		memcpy(tx_tmp_buf + dummy_nbytes + op->addr.nbytes + 1,
 		       op->data.buf.out,
 		       op->data.nbytes);
 

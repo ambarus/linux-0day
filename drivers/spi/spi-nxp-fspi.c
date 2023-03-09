@@ -444,7 +444,7 @@ static bool nxp_fspi_supports_op(struct spi_mem *mem,
 	if (op->addr.nbytes)
 		ret |= nxp_fspi_check_buswidth(f, op->addr.buswidth);
 
-	if (op->dummy.nbytes)
+	if (op->dummy.ncycles)
 		ret |= nxp_fspi_check_buswidth(f, op->dummy.buswidth);
 
 	if (op->data.nbytes)
@@ -467,9 +467,7 @@ static bool nxp_fspi_supports_op(struct spi_mem *mem,
 	if (op->addr.val >= f->memmap_phy_size)
 		return false;
 
-	/* Max 64 dummy clock cycles supported */
-	if (op->dummy.buswidth &&
-	    (op->dummy.nbytes * 8 / op->dummy.buswidth > 64))
+	if (op->dummy.ncycles > 64)
 		return false;
 
 	/* Max data length, check controller limits and alignment */
@@ -550,8 +548,7 @@ static void nxp_fspi_prepare_lut(struct nxp_fspi *f,
 		 * buswidth needs to be programmed as equal to data buswidth.
 		 */
 					      LUT_PAD(op->data.buswidth),
-					      op->dummy.nbytes * 8 /
-					      op->dummy.buswidth);
+					      op->dummy.ncycles);
 		lutidx++;
 	}
 

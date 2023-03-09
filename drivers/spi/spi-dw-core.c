@@ -6,6 +6,7 @@
  */
 
 #include <linux/bitfield.h>
+#include <linux/bits.h>
 #include <linux/dma-mapping.h>
 #include <linux/interrupt.h>
 #include <linux/module.h>
@@ -497,6 +498,7 @@ static bool dw_spi_supports_mem_op(struct spi_mem *mem,
 
 static int dw_spi_init_mem_buf(struct dw_spi *dws, const struct spi_mem_op *op)
 {
+	unsigned int dummy_nbytes;
 	unsigned int i, j, len;
 	u8 *out;
 
@@ -504,7 +506,8 @@ static int dw_spi_init_mem_buf(struct dw_spi *dws, const struct spi_mem_op *op)
 	 * Calculate the total length of the EEPROM command transfer and
 	 * either use the pre-allocated buffer or create a temporary one.
 	 */
-	len = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	len = op->cmd.nbytes + op->addr.nbytes + dummy_nbytes;
 	if (op->data.dir == SPI_MEM_DATA_OUT)
 		len += op->data.nbytes;
 
@@ -525,7 +528,7 @@ static int dw_spi_init_mem_buf(struct dw_spi *dws, const struct spi_mem_op *op)
 		out[i] = DW_SPI_GET_BYTE(op->cmd.opcode, op->cmd.nbytes - i - 1);
 	for (j = 0; j < op->addr.nbytes; ++i, ++j)
 		out[i] = DW_SPI_GET_BYTE(op->addr.val, op->addr.nbytes - j - 1);
-	for (j = 0; j < op->dummy.nbytes; ++i, ++j)
+	for (j = 0; j < dummy_nbytes; ++i, ++j)
 		out[i] = 0x0;
 
 	if (op->data.dir == SPI_MEM_DATA_OUT)

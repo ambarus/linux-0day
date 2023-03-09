@@ -358,20 +358,6 @@ static unsigned int cqspi_calc_rdreg(const struct spi_mem_op *op)
 	return rdreg;
 }
 
-static unsigned int cqspi_calc_dummy(const struct spi_mem_op *op)
-{
-	unsigned int dummy_clk;
-
-	if (!op->dummy.nbytes)
-		return 0;
-
-	dummy_clk = op->dummy.nbytes * (8 / op->dummy.buswidth);
-	if (op->cmd.dtr)
-		dummy_clk /= 2;
-
-	return dummy_clk;
-}
-
 static int cqspi_wait_idle(struct cqspi_st *cqspi)
 {
 	const unsigned int poll_idle_retry = 3;
@@ -519,7 +505,7 @@ static int cqspi_command_read(struct cqspi_flash_pdata *f_pdata,
 	rdreg = cqspi_calc_rdreg(op);
 	writel(rdreg, reg_base + CQSPI_REG_RD_INSTR);
 
-	dummy_clk = cqspi_calc_dummy(op);
+	dummy_clk = op->dummy.ncycles;
 	if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 		return -EOPNOTSUPP;
 
@@ -658,8 +644,7 @@ static int cqspi_read_setup(struct cqspi_flash_pdata *f_pdata,
 	reg = opcode << CQSPI_REG_RD_INSTR_OPCODE_LSB;
 	reg |= cqspi_calc_rdreg(op);
 
-	/* Setup dummy clock cycles */
-	dummy_clk = cqspi_calc_dummy(op);
+	dummy_clk = op->dummy.ncycles;
 
 	if (dummy_clk > CQSPI_DUMMY_CLKS_MAX)
 		return -EOPNOTSUPP;
@@ -1393,17 +1378,12 @@ static bool cqspi_supports_mem_op(struct spi_mem *mem,
 {
 	bool all_true, all_false;
 
-	/*
-	 * op->dummy.dtr is required for converting nbytes into ncycles.
-	 * Also, don't check the dtr field of the op phase having zero nbytes.
-	 */
+	/* Don't check the dtr field of the op phase having zero nbytes. */
 	all_true = op->cmd.dtr &&
 		   (!op->addr.nbytes || op->addr.dtr) &&
-		   (!op->dummy.nbytes || op->dummy.dtr) &&
 		   (!op->data.nbytes || op->data.dtr);
 
-	all_false = !op->cmd.dtr && !op->addr.dtr && !op->dummy.dtr &&
-		    !op->data.dtr;
+	all_false = !op->cmd.dtr && !op->addr.dtr && !op->data.dtr;
 
 	if (all_true) {
 		/* Right now we only support 8-8-8 DTR mode. */

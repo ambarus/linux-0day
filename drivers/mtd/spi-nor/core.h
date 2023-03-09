@@ -90,10 +90,10 @@
 		   SPI_MEM_OP_NO_DUMMY,					\
 		   SPI_MEM_OP_NO_DATA)
 
-#define SPI_NOR_READ_OP(opcode)						\
+#define SPI_NOR_READ_OP(opcode, ndummy)					\
 	SPI_MEM_OP(SPI_MEM_OP_CMD(opcode, 0),				\
 		   SPI_MEM_OP_ADDR(3, 0, 0),				\
-		   SPI_MEM_OP_DUMMY(1, 0),				\
+		   SPI_MEM_OP_DUMMY(ndummy, 0),				\
 		   SPI_MEM_OP_DATA_IN(2, NULL, 0))
 
 #define SPI_NOR_PP_OP(opcode)						\

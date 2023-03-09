@@ -6,6 +6,7 @@
  * Copyright (c) 2020, ASPEED Corporation.
  */
 
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/module.h>
 #include <linux/of.h>
@@ -49,6 +50,10 @@
 
 /* CEx Read timing compensation register */
 #define CE0_TIMING_COMPENSATION_REG	0x94
+
+#define ASPEED_SPI_MAX_DUMMY_NBYTES	7
+#define ASPEED_SPI_DUMMY_NBYTES(ncycles)				\
+					((ncycles) / BITS_PER_BYTE)
 
 enum aspeed_spi_ctl_reg_value {
 	ASPEED_SPI_BASE,
@@ -241,8 +246,8 @@ static ssize_t aspeed_spi_read_user(struct aspeed_spi_chip *chip,
 	if (ret < 0)
 		return ret;
 
-	if (op->dummy.buswidth && op->dummy.nbytes) {
-		for (i = 0; i < op->dummy.nbytes / op->dummy.buswidth; i++)
+	if (op->dummy.ncycles) {
+		for (i = 0; i < ASPEED_SPI_DUMMY_NBYTES(op->dummy.ncycles); i++)
 			aspeed_spi_write_to_ahb(chip->ahb_base, &dummy,	sizeof(dummy));
 	}
 
@@ -280,8 +285,9 @@ static bool aspeed_spi_supports_op(struct spi_mem *mem, const struct spi_mem_op 
 			return false;
 	}
 
-	if (op->dummy.nbytes != 0) {
-		if (op->dummy.buswidth > 1 || op->dummy.nbytes > 7)
+	if (op->dummy.ncycles != 0) {
+		if (op->dummy.buswidth > 1 ||
+		    op->dummy.ncycles > ASPEED_SPI_MAX_DUMMY_NBYTES * BITS_PER_BYTE)
 			return false;
 	}
 
@@ -306,7 +312,7 @@ static int do_aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *o
 		chip->cs, op->data.dir == SPI_MEM_DATA_IN ? "read" : "write",
 		op->cmd.opcode, op->cmd.buswidth, op->addr.buswidth,
 		op->dummy.buswidth, op->data.buswidth,
-		op->addr.nbytes, op->dummy.nbytes, op->data.nbytes);
+		op->addr.nbytes, op->dummy.ncycles, op->data.nbytes);
 
 	addr_mode = readl(aspi->regs + CE_CTRL_REG);
 	addr_mode_backup = addr_mode;
@@ -327,8 +333,8 @@ static int do_aspeed_spi_exec_op(struct spi_mem *mem, const struct spi_mem_op *o
 			ctl_val |= CTRL_IO_ADDRESS_4B;
 	}
 
-	if (op->dummy.nbytes)
-		ctl_val |= CTRL_IO_DUMMY_SET(op->dummy.nbytes / op->dummy.buswidth);
+	if (op->dummy.ncycles)
+		ctl_val |= CTRL_IO_DUMMY_SET(op->dummy.ncycles);
 
 	if (op->data.nbytes)
 		ctl_val |= aspeed_spi_get_io_mode(op);
@@ -564,7 +570,7 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 		desc->info.offset, desc->info.offset + desc->info.length,
 		op->cmd.opcode, op->cmd.buswidth, op->addr.buswidth,
 		op->dummy.buswidth, op->data.buswidth,
-		op->addr.nbytes, op->dummy.nbytes);
+		op->addr.nbytes, op->dummy.ncycles);
 
 	chip->clk_freq = desc->mem->spi->max_speed_hz;
 
@@ -585,7 +591,7 @@ static int aspeed_spi_dirmap_create(struct spi_mem_dirmap_desc *desc)
 		CTRL_IO_MODE_READ;
 
 	if (op->dummy.nbytes)
-		ctl_val |= CTRL_IO_DUMMY_SET(op->dummy.nbytes / op->dummy.buswidth);
+		ctl_val |= CTRL_IO_DUMMY_SET(op->dummy.ncycles);
 
 	/* Tune 4BYTE address mode */
 	if (op->addr.nbytes) {

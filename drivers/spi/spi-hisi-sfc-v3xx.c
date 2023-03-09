@@ -6,6 +6,7 @@
 // Author: John Garry <john.garry@huawei.com>
 
 #include <linux/bitops.h>
+#include <linux/bits.h>
 #include <linux/completion.h>
 #include <linux/dmi.h>
 #include <linux/interrupt.h>
@@ -275,6 +276,7 @@ static int hisi_sfc_v3xx_start_bus(struct hisi_sfc_v3xx_host *host,
 				   u8 chip_select)
 {
 	int len = op->data.nbytes, buswidth_mode;
+	unsigned int dummy_nbytes;
 	u32 config = 0;
 
 	if (op->addr.nbytes)
@@ -302,7 +304,8 @@ static int hisi_sfc_v3xx_start_bus(struct hisi_sfc_v3xx_host *host,
 	if (op->data.dir == SPI_MEM_DATA_IN)
 		config |= HISI_SFC_V3XX_CMD_CFG_RW_MSK;
 
-	config |= op->dummy.nbytes << HISI_SFC_V3XX_CMD_CFG_DUMMY_CNT_OFF |
+	dummy_mbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	config |= dummy_nbytes << HISI_SFC_V3XX_CMD_CFG_DUMMY_CNT_OFF |
 		  chip_select << HISI_SFC_V3XX_CMD_CFG_CS_SEL_OFF |
 		  HISI_SFC_V3XX_CMD_CFG_START_MSK;
 

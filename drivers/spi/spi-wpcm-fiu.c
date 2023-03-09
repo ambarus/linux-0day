@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: GPL-2.0
 // Copyright (C) 2022 Jonathan Neuschäfer
 
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
@@ -145,7 +146,7 @@ static bool wpcm_fiu_normal_match(const struct spi_mem_op *op)
 		return false;
 
 	return (op->addr.nbytes == 0 || op->addr.nbytes == 3) &&
-	       op->dummy.nbytes == 0 && op->data.nbytes <= 4;
+	       op->dummy.ncycles == 0 && op->data.nbytes <= 4;
 }
 
 static int wpcm_fiu_normal_exec(struct spi_mem *mem, const struct spi_mem_op *op)
@@ -169,8 +170,10 @@ static int wpcm_fiu_normal_exec(struct spi_mem *mem, const struct spi_mem_op *op
 
 static bool wpcm_fiu_fast_read_match(const struct spi_mem_op *op)
 {
+	unsigned int dummy_nbytes = op->dummy.ncycles / BITS_PER_BYTE;
+
 	return op->cmd.opcode == 0x0b && op->addr.nbytes == 3 &&
-	       op->dummy.nbytes == 1 &&
+	       dummy_nbytes == 1 &&
 	       op->data.nbytes >= 1 && op->data.nbytes <= 4 &&
 	       op->data.dir == SPI_MEM_DATA_IN;
 }
@@ -190,7 +193,7 @@ static int wpcm_fiu_fast_read_exec(struct spi_mem *mem, const struct spi_mem_op 
  */
 static bool wpcm_fiu_4ba_match(const struct spi_mem_op *op)
 {
-	return op->addr.nbytes == 4 && op->dummy.nbytes == 0 && op->data.nbytes <= 4;
+	return op->addr.nbytes == 4 && op->dummy.ncycles == 0 && op->data.nbytes <= 4;
 }
 
 static int wpcm_fiu_4ba_exec(struct spi_mem *mem, const struct spi_mem_op *op)
@@ -234,7 +237,7 @@ static int wpcm_fiu_4ba_exec(struct spi_mem *mem, const struct spi_mem_op *op)
 static bool wpcm_fiu_rdid_match(const struct spi_mem_op *op)
 {
 	return op->cmd.opcode == 0x9f && op->addr.nbytes == 0 &&
-	       op->dummy.nbytes == 0 && op->data.nbytes == 6 &&
+	       op->dummy.ncycles == 0 && op->data.nbytes == 6 &&
 	       op->data.dir == SPI_MEM_DATA_IN;
 }
 
@@ -266,18 +269,22 @@ static int wpcm_fiu_rdid_exec(struct spi_mem *mem, const struct spi_mem_op *op)
  */
 static bool wpcm_fiu_dummy_match(const struct spi_mem_op *op)
 {
+	unsigned int dummy_nbytes;
+
 	// Opcode 0x0b (FAST READ) is treated differently in hardware
 	if (op->cmd.opcode == 0x0b)
 		return false;
 
+	dummy_nbytes = op->dummy.ncycles / BITS_PER_BYTE;
 	return (op->addr.nbytes == 0 || op->addr.nbytes == 3) &&
-	       op->dummy.nbytes >= 1 && op->dummy.nbytes <= 5 &&
+	       dummy_nbytes >= 1 && dummy_nbytes <= 5 &&
 	       op->data.nbytes <= 4;
 }
 
 static int wpcm_fiu_dummy_exec(struct spi_mem *mem, const struct spi_mem_op *op)
 {
 	struct wpcm_fiu_spi *fiu = spi_controller_get_devdata(mem->spi->controller);
+	unsigned int dummy_nbytes;
 	int cs = mem->spi->chip_select;
 
 	wpcm_fiu_ects_assert(fiu, cs);
@@ -285,7 +292,8 @@ static int wpcm_fiu_dummy_exec(struct spi_mem *mem, const struct spi_mem_op *op)
 	/* First transfer */
 	wpcm_fiu_set_opcode(fiu, op->cmd.opcode);
 	wpcm_fiu_set_addr(fiu, op->addr.val);
-	wpcm_fiu_do_uma(fiu, cs, op->addr.nbytes != 0, true, op->dummy.nbytes - 1);
+	dummy_nbytes = op->dummy.ncycles / BITS_PER_BYTE;
+	wpcm_fiu_do_uma(fiu, cs, op->addr.nbytes != 0, true, dummy_nbytes - 1);
 
 	/* Second transfer */
 	wpcm_fiu_set_opcode(fiu, 0);

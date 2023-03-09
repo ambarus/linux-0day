@@ -29,9 +29,9 @@
 
 #define SPI_MEM_OP_NO_ADDR	{ }
 
-#define SPI_MEM_OP_DUMMY(__nbytes, __buswidth)			\
+#define SPI_MEM_OP_DUMMY(__ncycles, __buswidth)			\
 	{							\
-		.nbytes = __nbytes,				\
+		.ncycles = __ncycles,				\
 		.buswidth = __buswidth,				\
 	}
 
@@ -83,10 +83,20 @@ enum spi_mem_data_dir {
  *	      Note that only @addr.nbytes are taken into account in this
  *	      address value, so users should make sure the value fits in the
  *	      assigned number of bytes.
- * @dummy.nbytes: number of dummy bytes to send after an opcode or address. Can
- *		  be zero if the operation does not require dummy bytes
- * @dummy.buswidth: number of IO lanes used to transmit the dummy bytes
- * @dummy.dtr: whether the dummy bytes should be sent in DTR mode or not
+ * @dummy.ncycles: number of dummy cycles. These cycles are used to provide
+ *                 time for initial access latency of the memory array and
+ *                 allow for the controller to stop driving IO signals and
+ *                 target to start driving IO signals (bus turnaround) for
+ *                 read transactions. Can be zero if the operation does not
+ *                 require dummy cycles.
+ * @dummy.buswidth: number of IO lanes used for the dummy cycles. This matters
+ *                  for the controllers that only work on a byte latency
+ *                  boundary and need to convert the number of dummy cycles to
+ *                  the number of dummy bytes.
+ * @dummy.dtr: whether DTR is used for the dummy cycles or not. This matters
+ *             for the controllers that only work on a byte latency boundary
+ *             and need to convert the number of dummy cycles to the number
+ *             of dummy bytes.
  * @data.buswidth: number of IO lanes used to send/receive the data
  * @data.dtr: whether the data should be sent in DTR mode or not
  * @data.ecc: whether error correction is required or not
@@ -112,7 +122,7 @@ struct spi_mem_op {
 	} addr;
 
 	struct {
-		u8 nbytes;
+		u8 ncycles;
 		u8 buswidth;
 		u8 dtr : 1;
 	} dummy;

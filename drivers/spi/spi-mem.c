@@ -149,7 +149,7 @@ static bool spi_mem_check_buswidth(struct spi_mem *mem,
 	    spi_check_buswidth_req(mem, op->addr.buswidth, true))
 		return false;
 
-	if (op->dummy.nbytes &&
+	if (op->dummy.ncycles &&
 	    spi_check_buswidth_req(mem, op->dummy.buswidth, true))
 		return false;
 
@@ -202,7 +202,7 @@ static int spi_mem_check_op(const struct spi_mem_op *op)
 		return -EINVAL;
 
 	if ((op->addr.nbytes && !op->addr.buswidth) ||
-	    (op->dummy.nbytes && !op->dummy.buswidth) ||
+	    (op->dummy.ncycles && !op->dummy.buswidth) ||
 	    (op->data.nbytes && !op->data.buswidth))
 		return -EINVAL;
 
@@ -312,6 +312,7 @@ static void spi_mem_access_end(struct spi_mem *mem)
 int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 {
 	unsigned int tmpbufsize, xferpos = 0, totalxferlen = 0;
+	unsigned int dummy_nbytes;
 	struct spi_controller *ctlr = mem->spi->controller;
 	struct spi_transfer xfers[4] = { };
 	struct spi_message msg;
@@ -343,7 +344,8 @@ int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 			return ret;
 	}
 
-	tmpbufsize = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
+	tmpbufsize = op->cmd.nbytes + op->addr.nbytes + dummy_nbytes;
 
 	/*
 	 * Allocate a buffer to transmit the CMD, ADDR cycles with kmalloc() so
@@ -379,15 +381,15 @@ int spi_mem_exec_op(struct spi_mem *mem, const struct spi_mem_op *op)
 		totalxferlen += op->addr.nbytes;
 	}
 
-	if (op->dummy.nbytes) {
-		memset(tmpbuf + op->addr.nbytes + 1, 0xff, op->dummy.nbytes);
+	if (op->dummy.ncycles) {
+		memset(tmpbuf + op->addr.nbytes + 1, 0xff, dummy_nbytes);
 		xfers[xferpos].tx_buf = tmpbuf + op->addr.nbytes + 1;
-		xfers[xferpos].len = op->dummy.nbytes;
+		xfers[xferpos].len = dummy_nbytes;
 		xfers[xferpos].tx_nbits = op->dummy.buswidth;
 		xfers[xferpos].dummy_data = 1;
 		spi_message_add_tail(&xfers[xferpos], &msg);
 		xferpos++;
-		totalxferlen += op->dummy.nbytes;
+		totalxferlen += dummy_nbytes;
 	}
 
 	if (op->data.nbytes) {
@@ -455,13 +457,16 @@ EXPORT_SYMBOL_GPL(spi_mem_get_name);
 int spi_mem_adjust_op_size(struct spi_mem *mem, struct spi_mem_op *op)
 {
 	struct spi_controller *ctlr = mem->spi->controller;
+	unsigned int dummy_nbytes;
 	size_t len;
 
 	if (ctlr->mem_ops && ctlr->mem_ops->adjust_op_size)
 		return ctlr->mem_ops->adjust_op_size(mem, op);
 
 	if (!ctlr->mem_ops || !ctlr->mem_ops->exec_op) {
-		len = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes;
+		dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+			       BITS_PER_BYTE;
+		len = op->cmd.nbytes + op->addr.nbytes + dummy_nbytes;
 
 		if (len > spi_max_transfer_size(mem->spi))
 			return -EINVAL;

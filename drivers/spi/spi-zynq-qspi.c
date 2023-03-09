@@ -5,6 +5,7 @@
  * Author: Naga Sureshkumar Relli <nagasure@xilinx.com>
  */
 
+#include <linux/bits.h>
 #include <linux/clk.h>
 #include <linux/delay.h>
 #include <linux/interrupt.h>
@@ -526,6 +527,7 @@ static int zynq_qspi_exec_mem_op(struct spi_mem *mem,
 				 const struct spi_mem_op *op)
 {
 	struct zynq_qspi *xqspi = spi_controller_get_devdata(mem->spi->master);
+	unsigned int dummy_nbytes;
 	int err = 0, i;
 	u8 *tmpbuf;
 
@@ -568,17 +570,19 @@ static int zynq_qspi_exec_mem_op(struct spi_mem *mem,
 			err = -ETIMEDOUT;
 	}
 
-	if (op->dummy.nbytes) {
-		tmpbuf = kzalloc(op->dummy.nbytes, GFP_KERNEL);
+	if (op->dummy.ncycles) {
+		dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) /
+			       BITS_PER_BYTE;
+		tmpbuf = kzalloc(dummy_nbytes, GFP_KERNEL);
 		if (!tmpbuf)
 			return -ENOMEM;
 
-		memset(tmpbuf, 0xff, op->dummy.nbytes);
+		memset(tmpbuf, 0xff, dummy_nbytes);
 		reinit_completion(&xqspi->data_completion);
 		xqspi->txbuf = tmpbuf;
 		xqspi->rxbuf = NULL;
-		xqspi->tx_bytes = op->dummy.nbytes;
-		xqspi->rx_bytes = op->dummy.nbytes;
+		xqspi->tx_bytes = dummy_nbytes;
+		xqspi->rx_bytes = dummy_nbytes;
 		zynq_qspi_write_op(xqspi, ZYNQ_QSPI_FIFO_DEPTH, true);
 		zynq_qspi_write(xqspi, ZYNQ_QSPI_IEN_OFFSET,
 				ZYNQ_QSPI_IXR_RXTX_MASK);

@@ -183,23 +183,18 @@ static bool need_bounce(struct mtk_nor *sp, const struct spi_mem_op *op)
 
 static bool mtk_nor_match_read(const struct spi_mem_op *op)
 {
-	int dummy = 0;
-
-	if (op->dummy.nbytes)
-		dummy = op->dummy.nbytes * BITS_PER_BYTE / op->dummy.buswidth;
-
 	if ((op->data.buswidth == 2) || (op->data.buswidth == 4)) {
 		if (op->addr.buswidth == 1)
-			return dummy == 8;
+			return op->dummy.ncycles == 8;
 		else if (op->addr.buswidth == 2)
-			return dummy == 4;
+			return op->dummy.ncycles == 4;
 		else if (op->addr.buswidth == 4)
-			return dummy == 6;
+			return op->dummy.ncycles == 6;
 	} else if ((op->addr.buswidth == 1) && (op->data.buswidth == 1)) {
 		if (op->cmd.opcode == 0x03)
-			return dummy == 0;
+			return op->dummy.ncycles == 0;
 		else if (op->cmd.opcode == 0x0b)
-			return dummy == 8;
+			return op->dummy.ncycles == 8;
 	}
 	return false;
 }
@@ -207,6 +202,7 @@ static bool mtk_nor_match_read(const struct spi_mem_op *op)
 static bool mtk_nor_match_prg(const struct spi_mem_op *op)
 {
 	int tx_len, rx_len, prg_len, prg_left;
+	unsigned int dummy_nbytes;
 
 	// prg mode is spi-only.
 	if ((op->cmd.buswidth > 1) || (op->addr.buswidth > 1) ||
@@ -215,9 +211,10 @@ static bool mtk_nor_match_prg(const struct spi_mem_op *op)
 
 	tx_len = op->cmd.nbytes + op->addr.nbytes;
 
+	dummy_nbytes = op->dummy.ncycles / BITS_PER_BYTE;
 	if (op->data.dir == SPI_MEM_DATA_OUT) {
 		// count dummy bytes only if we need to write data after it
-		tx_len += op->dummy.nbytes;
+		tx_len += dummy_nbytes;
 
 		// leave at least one byte for data
 		if (tx_len > MTK_NOR_REG_PRGDATA_MAX)
@@ -233,7 +230,7 @@ static bool mtk_nor_match_prg(const struct spi_mem_op *op)
 			return false;
 
 		rx_len = op->data.nbytes;
-		prg_left = MTK_NOR_PRG_CNT_MAX / 8 - tx_len - op->dummy.nbytes;
+		prg_left = MTK_NOR_PRG_CNT_MAX / 8 - tx_len - dummy_nbytes;
 		if (prg_left > MTK_NOR_REG_SHIFT_MAX + 1)
 			prg_left = MTK_NOR_REG_SHIFT_MAX + 1;
 		if (rx_len > prg_left) {
@@ -242,11 +239,11 @@ static bool mtk_nor_match_prg(const struct spi_mem_op *op)
 			rx_len = prg_left;
 		}
 
-		prg_len = tx_len + op->dummy.nbytes + rx_len;
+		prg_len = tx_len + dummy_nbytes + rx_len;
 		if (prg_len > MTK_NOR_PRG_CNT_MAX / 8)
 			return false;
 	} else {
-		prg_len = tx_len + op->dummy.nbytes;
+		prg_len = tx_len + dummy_nbytes;
 		if (prg_len > MTK_NOR_PRG_CNT_MAX / 8)
 			return false;
 	}
@@ -256,15 +253,17 @@ static bool mtk_nor_match_prg(const struct spi_mem_op *op)
 static void mtk_nor_adj_prg_size(struct spi_mem_op *op)
 {
 	int tx_len, tx_left, prg_left;
+	unsigned int dummy_nbytes;
 
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
 	tx_len = op->cmd.nbytes + op->addr.nbytes;
 	if (op->data.dir == SPI_MEM_DATA_OUT) {
-		tx_len += op->dummy.nbytes;
+		tx_len += dummy_nbytes;
 		tx_left = MTK_NOR_REG_PRGDATA_MAX + 1 - tx_len;
 		if (op->data.nbytes > tx_left)
 			op->data.nbytes = tx_left;
 	} else if (op->data.dir == SPI_MEM_DATA_IN) {
-		prg_left = MTK_NOR_PRG_CNT_MAX / 8 - tx_len - op->dummy.nbytes;
+		prg_left = MTK_NOR_PRG_CNT_MAX / 8 - tx_len - dummy_nbytes;
 		if (prg_left > MTK_NOR_REG_SHIFT_MAX + 1)
 			prg_left = MTK_NOR_REG_SHIFT_MAX + 1;
 		if (op->data.nbytes > prg_left)
@@ -324,7 +323,7 @@ static bool mtk_nor_supports_op(struct spi_mem *mem,
 			break;
 		case SPI_MEM_DATA_OUT:
 			if ((op->addr.buswidth == 1) &&
-			    (op->dummy.nbytes == 0) &&
+			    (op->dummy.ncycles == 0) &&
 			    (op->data.buswidth == 1))
 				return true;
 			break;
@@ -519,18 +518,20 @@ static int mtk_nor_spi_mem_prg(struct mtk_nor *sp, const struct spi_mem_op *op)
 	int reg_offset = MTK_NOR_REG_PRGDATA_MAX;
 	int tx_len, prg_len;
 	int i, ret;
+	unsigned int dummy_nbytes;
 	void __iomem *reg;
 	u8 bufbyte;
 
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
 	tx_len = op->cmd.nbytes + op->addr.nbytes;
 
 	// count dummy bytes only if we need to write data after it
 	if (op->data.dir == SPI_MEM_DATA_OUT)
-		tx_len += op->dummy.nbytes + op->data.nbytes;
+		tx_len += dummy_nbytes + op->data.nbytes;
 	else if (op->data.dir == SPI_MEM_DATA_IN)
 		rx_len = op->data.nbytes;
 
-	prg_len = op->cmd.nbytes + op->addr.nbytes + op->dummy.nbytes +
+	prg_len = op->cmd.nbytes + op->addr.nbytes + dummy_nbytes +
 		  op->data.nbytes;
 
 	// an invalid op may reach here if the caller calls exec_op without
@@ -555,7 +556,7 @@ static int mtk_nor_spi_mem_prg(struct mtk_nor *sp, const struct spi_mem_op *op)
 	}
 
 	if (op->data.dir == SPI_MEM_DATA_OUT) {
-		for (i = 0; i < op->dummy.nbytes; i++, reg_offset--) {
+		for (i = 0; i < dummy_nbytes; i++, reg_offset--) {
 			reg = sp->base + MTK_NOR_REG_PRGDATA(reg_offset);
 			writeb(0, reg);
 		}

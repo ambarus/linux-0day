@@ -265,15 +265,19 @@ static const struct regmap_config npcm_mtd_regmap_config = {
 static void npcm_fiu_set_drd(struct npcm_fiu_spi *fiu,
 			     const struct spi_mem_op *op)
 {
+	unsigned int dummy_nbytes;
+
 	regmap_update_bits(fiu->regmap, NPCM_FIU_DRD_CFG,
 			   NPCM_FIU_DRD_CFG_ACCTYPE,
 			   ilog2(op->addr.buswidth) <<
 			   NPCM_FIU_DRD_ACCTYPE_SHIFT);
 	fiu->drd_op.addr.buswidth = op->addr.buswidth;
+
+	dummy_nbytes = (op->dummy.ncycles * op->dummy.buswidth) / BITS_PER_BYTE;
 	regmap_update_bits(fiu->regmap, NPCM_FIU_DRD_CFG,
 			   NPCM_FIU_DRD_CFG_DBW,
-			   op->dummy.nbytes << NPCM_FIU_DRD_DBW_SHIFT);
-	fiu->drd_op.dummy.nbytes = op->dummy.nbytes;
+			   dummy_nbytes << NPCM_FIU_DRD_DBW_SHIFT);
+	fiu->drd_op.dummy.cycles = op->dummy.ncycles;
 	regmap_update_bits(fiu->regmap, NPCM_FIU_DRD_CFG,
 			   NPCM_FIU_DRD_CFG_RDCMD, op->cmd.opcode);
 	fiu->drd_op.cmd.opcode = op->cmd.opcode;
@@ -299,7 +303,7 @@ static ssize_t npcm_fiu_direct_read(struct spi_mem_dirmap_desc *desc,
 			*(buf_rx + i) = ioread8(src + i);
 	} else {
 		if (desc->info.op_tmpl.addr.buswidth != fiu->drd_op.addr.buswidth ||
-		    desc->info.op_tmpl.dummy.nbytes != fiu->drd_op.dummy.nbytes ||
+		    desc->info.op_tmpl.dummy.ncycles != fiu->drd_op.dummy.ncycles ||
 		    desc->info.op_tmpl.cmd.opcode != fiu->drd_op.cmd.opcode ||
 		    desc->info.op_tmpl.addr.nbytes != fiu->drd_op.addr.nbytes)
 			npcm_fiu_set_drd(fiu, &desc->info.op_tmpl);
@@ -357,7 +361,8 @@ static int npcm_fiu_uma_read(struct spi_mem *mem,
 			<< NPCM_FIU_UMA_CFG_DBPCK_SHIFT;
 		uma_cfg |= ilog2(op->data.buswidth)
 			<< NPCM_FIU_UMA_CFG_RDBPCK_SHIFT;
-		uma_cfg |= op->dummy.nbytes << NPCM_FIU_UMA_CFG_DBSIZ_SHIFT;
+		uma_cfg |= ((op->dummy.ncycles * op->dummy.buswidth) /
+			    BITS_PER_BYTE) << NPCM_FIU_UMA_CFG_DBSIZ_SHIFT;
 		uma_cfg |= op->addr.nbytes << NPCM_FIU_UMA_CFG_ADDSIZ_SHIFT;
 		regmap_write(fiu->regmap, NPCM_FIU_UMA_ADDR, addr);
 	} else {

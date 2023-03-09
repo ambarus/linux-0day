@@ -88,7 +88,7 @@ void spi_nor_spimem_setup_op(const struct spi_nor *nor,
 	if (op->addr.nbytes)
 		op->addr.buswidth = spi_nor_get_protocol_addr_nbits(proto);
 
-	if (op->dummy.nbytes)
+	if (op->dummy.ncycles)
 		op->dummy.buswidth = spi_nor_get_protocol_addr_nbits(proto);
 
 	if (op->data.nbytes)
@@ -105,9 +105,6 @@ void spi_nor_spimem_setup_op(const struct spi_nor *nor,
 		op->addr.dtr = true;
 		op->dummy.dtr = true;
 		op->data.dtr = true;
-
-		/* 2 bytes per clock cycle in DTR mode. */
-		op->dummy.nbytes *= 2;
 
 		ext = spi_nor_get_cmd_ext(nor, op);
 		op->cmd.opcode = (op->cmd.opcode << 8) | ext;
@@ -206,11 +203,6 @@ static ssize_t spi_nor_spimem_read_data(struct spi_nor *nor, loff_t from,
 	int error;
 
 	spi_nor_spimem_setup_op(nor, &op, nor->read_proto);
-
-	/* convert the dummy cycles to the number of bytes */
-	op.dummy.nbytes = (nor->read_dummy * op.dummy.buswidth) / 8;
-	if (spi_nor_protocol_is_dtr(nor->read_proto))
-		op.dummy.nbytes *= 2;
 
 	usebouncebuf = spi_nor_spimem_bounce(nor, &op);
 
@@ -412,8 +404,9 @@ int spi_nor_write_disable(struct spi_nor *nor)
  * @nor:	pointer to 'struct spi_nor'.
  * @naddr:	number of address bytes to send. Can be zero if the operation
  *		does not need to send an address.
- * @ndummy:	number of dummy bytes to send after an opcode or address. Can
- *		be zero if the operation does not require dummy bytes.
+ * @ndummy:	number of dummy cycles. These cycles are used to provide time
+ *              for access latency of the memory array. Can be zero if the
+ *              operation does not require dummy cycles.
  * @id:		pointer to a DMA-able buffer where the value of the JEDEC ID
  *		will be written.
  * @proto:	the SPI protocol for register operation.
@@ -455,7 +448,7 @@ int spi_nor_read_sr(struct spi_nor *nor, u8 *sr)
 
 		if (nor->reg_proto == SNOR_PROTO_8_8_8_DTR) {
 			op.addr.nbytes = nor->params->rdsr_addr_nbytes;
-			op.dummy.nbytes = nor->params->rdsr_dummy;
+			op.dummy.ncycles = nor->params->rdsr_dummy;
 			/*
 			 * We don't want to read only one byte in DTR mode. So,
 			 * read 2 and then discard the second byte.
@@ -1934,15 +1927,11 @@ static int spi_nor_spimem_check_op(struct spi_nor *nor,
 static int spi_nor_spimem_check_readop(struct spi_nor *nor,
 				       const struct spi_nor_read_command *read)
 {
-	struct spi_mem_op op = SPI_NOR_READ_OP(read->opcode);
+	struct spi_mem_op op =
+		SPI_NOR_READ_OP(read->opcode,
+				read->num_mode_clocks + read->num_wait_states);
 
 	spi_nor_spimem_setup_op(nor, &op, read->proto);
-
-	/* convert the dummy cycles to the number of bytes */
-	op.dummy.nbytes = (read->num_mode_clocks + read->num_wait_states) *
-			  op.dummy.buswidth / 8;
-	if (spi_nor_protocol_is_dtr(nor->read_proto))
-		op.dummy.nbytes *= 2;
 
 	return spi_nor_spimem_check_op(nor, &op);
 }
@@ -3119,11 +3108,6 @@ static int spi_nor_create_read_dirmap(struct spi_nor *nor)
 	struct spi_mem_op *op = &info.op_tmpl;
 
 	spi_nor_spimem_setup_op(nor, op, nor->read_proto);
-
-	/* convert the dummy cycles to the number of bytes */
-	op->dummy.nbytes = (nor->read_dummy * op->dummy.buswidth) / 8;
-	if (spi_nor_protocol_is_dtr(nor->read_proto))
-		op->dummy.nbytes *= 2;
 
 	/*
 	 * Since spi_nor_spimem_setup_op() only sets buswidth when the number

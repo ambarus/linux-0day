@@ -286,7 +286,7 @@ static bool atmel_qspi_supports_op(struct spi_mem *mem,
 
 	/* special case not supported by hardware */
 	if (op->addr.nbytes == 2 && op->cmd.buswidth != op->addr.buswidth &&
-	    op->dummy.nbytes == 0)
+	    op->dummy.ncycles == 0)
 		return false;
 
 	return true;
@@ -308,8 +308,8 @@ static int atmel_qspi_set_cfg(struct atmel_qspi *aq,
 		return mode;
 	ifr |= atmel_qspi_modes[mode].config;
 
-	if (op->dummy.nbytes)
-		dummy_cycles = op->dummy.nbytes * 8 / op->dummy.buswidth;
+	if (op->dummy.ncycles)
+		dummy_cycles = op->dummy.ncycles;
 
 	/*
 	 * The controller allows 24 and 32-bit addressing while NAND-flash
