@@ -872,6 +872,8 @@ static int ext4_ioc_getfsmap(struct super_block *sb,
 
 	if (copy_from_user(&head, arg, sizeof(struct fsmap_head)))
 		return -EFAULT;
+	if (head.fmh_iflags & ~FMH_IF_VALID)
+		return -EINVAL;
 	if (memchr_inv(head.fmh_reserved, 0, sizeof(head.fmh_reserved)) ||
 	    memchr_inv(head.fmh_keys[0].fmr_reserved, 0,
 		       sizeof(head.fmh_keys[0].fmr_reserved)) ||
