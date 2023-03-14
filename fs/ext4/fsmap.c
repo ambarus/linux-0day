@@ -572,7 +572,7 @@ err:
 
 /* Do we recognize the device? */
 static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
-					  struct fsmap *fm)
+					  const struct fsmap *fm)
 {
 	if (fm->fmr_device == 0 || fm->fmr_device == UINT_MAX ||
 	    fm->fmr_device == new_encode_dev(sb->s_bdev->bd_dev))
@@ -584,8 +584,8 @@ static bool ext4_getfsmap_is_valid_device(struct super_block *sb,
 }
 
 /* Ensure that the low key is less than the high key. */
-static bool ext4_getfsmap_check_keys(struct fsmap *low_key,
-				     struct fsmap *high_key)
+static bool ext4_getfsmap_check_keys(const struct fsmap *low_key,
+				     const struct fsmap *high_key)
 {
 	u64 l_fmr_phys = low_key->fmr_physical + low_key->fmr_length;
 
@@ -607,7 +607,7 @@ static bool ext4_getfsmap_check_keys(struct fsmap *low_key,
 	return false;
 }
 
-int ext4_fsmap_check_head(struct super_block *sb, struct fsmap_head *head)
+int ext4_fsmap_check_head(struct super_block *sb, const struct fsmap_head *head)
 {
 	const struct fsmap *l = &head->fmh_keys[0];
 	const struct fsmap *h = &head->fmh_keys[1];
