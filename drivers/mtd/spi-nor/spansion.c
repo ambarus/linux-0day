@@ -733,8 +733,14 @@ static int s28hx_t_post_bfpt_fixup(struct spi_nor *nor,
 
 static int s28hx_t_late_init(struct spi_nor *nor)
 {
-	nor->params->set_octal_dtr = cypress_nor_set_octal_dtr;
+	struct spi_nor_flash_parameter *params = nor->params;
+
+	params->set_octal_dtr = cypress_nor_set_octal_dtr;
 	cypress_nor_ecc_init(nor);
+
+	/* Replace ready() with multi die version. */
+	if (params->n_dice)
+		params->ready = cypress_nor_sr_ready_and_clear;
 
 	return 0;
 }
