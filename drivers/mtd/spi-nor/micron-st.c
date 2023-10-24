@@ -203,8 +203,22 @@ static int st_nor_four_die_late_init(struct spi_nor *nor)
 	return 0;
 }
 
+static int st_nor_two_die_late_init(struct spi_nor *nor)
+{
+	struct spi_nor_flash_parameter *params = nor->params;
+
+	params->chip_erase_opcode = SPINOR_OP_MT_CHIP_ERASE;
+	params->n_dice = 2;
+
+	return 0;
+}
+
 static struct spi_nor_fixups n25q00_fixups = {
 	.late_init = st_nor_four_die_late_init,
+};
+
+static struct spi_nor_fixups mt25q01_fixups = {
+	.late_init = st_nor_two_die_late_init,
 };
 
 static struct spi_nor_fixups mt25q02_fixups = {
@@ -449,6 +463,11 @@ static const struct flash_info st_nor_parts[] = {
 			 SPI_NOR_BP3_SR_BIT6,
 		.no_sfdp_flags = SECT_4K | SPI_NOR_QUAD_READ,
 		.mfr_flags = USE_FSR,
+	}, {
+		.id = SNOR_ID(0x20, 0xbb, 0x21, 0x10, 0x44, 0x00),
+		.name = "mt25qu01g",
+		.mfr_flags = USE_FSR,
+		.fixups = &mt25q01_fixups,
 	}, {
 		.id = SNOR_ID(0x20, 0xbb, 0x21),
 		.name = "n25q00a",
