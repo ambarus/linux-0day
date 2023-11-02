@@ -521,6 +521,7 @@ int spi_nor_set_4byte_addr_mode_en4b_ex4b(struct spi_nor *nor, bool enable)
 {
 	int ret;
 
+	dev_info(nor->dev, "%s enable = %d\n", __func__, enable);
 	if (nor->spimem) {
 		struct spi_mem_op op = SPI_NOR_EN4B_EX4B_OP(enable);
 
@@ -554,6 +555,7 @@ int spi_nor_set_4byte_addr_mode_wren_en4b_ex4b(struct spi_nor *nor, bool enable)
 {
 	int ret;
 
+	dev_info(nor->dev, "%s enable = %d\n", __func__, enable);
 	ret = spi_nor_write_enable(nor);
 	if (ret)
 		return ret;
@@ -583,6 +585,7 @@ int spi_nor_set_4byte_addr_mode_brwr(struct spi_nor *nor, bool enable)
 {
 	int ret;
 
+	dev_info(nor->dev, "%s enable = %d\n", __func__, enable);
 	nor->bouncebuf[0] = enable << 7;
 
 	if (nor->spimem) {
@@ -1067,7 +1070,7 @@ static int spi_nor_read_sr2(struct spi_nor *nor, u8 *sr2)
  */
 static int spi_nor_erase_die(struct spi_nor *nor, loff_t addr, size_t die_size)
 {
-	bool multi_die = nor->mtd.size == die_size;
+	bool multi_die = nor->mtd.size != die_size;
 	int ret;
 
 	dev_dbg(nor->dev, " %lldKiB\n", (long long)(die_size >> 10));
@@ -1078,6 +1081,23 @@ static int spi_nor_erase_die(struct spi_nor *nor, loff_t addr, size_t die_size)
 					     nor->addr_nbytes, addr, multi_die);
 
 		spi_nor_spimem_setup_op(nor, &op, nor->reg_proto);
+
+		dev_info(nor->dev, "***** nor->reg_proto = 0x%08x \n", nor->reg_proto);
+		dev_info(nor->dev, "*****\n");
+		dev_info(nor->dev, "***** op.cmd.nbytes = 0x%02x \n", op.cmd.nbytes);
+		dev_info(nor->dev, "***** op.cmd.buswidth = 0x%02x \n", op.cmd.buswidth);
+		dev_info(nor->dev, "***** op.cmd.opcode = 0x%02x \n", (u8) op.cmd.opcode);
+		dev_info(nor->dev, "*****\n");
+		dev_info(nor->dev, "***** op.addr.nbytes = 0x%02x \n", op.addr.nbytes);
+		dev_info(nor->dev, "***** op.addr.buswidth = 0x%02x \n", op.addr.buswidth);
+		dev_info(nor->dev, "***** op.addr.buswidth = 0x%llx \n", op.addr.val);
+		dev_info(nor->dev, "*****\n");
+		dev_info(nor->dev, "***** op.dummy.nbytes = 0x%02x \n", op.dummy.nbytes);
+		dev_info(nor->dev, "***** op.dummy.buswidth = 0x%02x \n", op.dummy.buswidth);
+		dev_info(nor->dev, "*****\n");
+		dev_info(nor->dev, "***** op.data.buswidth = 0x%02x \n", op.data.buswidth);
+		dev_info(nor->dev, "***** op.data.nbytes = %d \n", op.data.nbytes);
+
 
 		ret = spi_mem_exec_op(nor->spimem, &op);
 	} else {
@@ -1870,7 +1890,7 @@ static int spi_nor_erase(struct mtd_info *mtd, struct erase_info *instr)
 
 	if (n_dice) {
 		die_size = div_u64(mtd->size, n_dice);
-		if (len == die_size && (addr & (die_size - 1)))
+		if (!(len & (die_size - 1)) && !(addr & (die_size - 1)))
 			multi_die_erase = true;
 	} else {
 		die_size = mtd->size;
@@ -3181,6 +3201,7 @@ int spi_nor_set_4byte_addr_mode(struct spi_nor *nor, bool enable)
 	struct spi_nor_flash_parameter *params = nor->params;
 	int ret;
 
+	dev_info(nor->dev, "enter %s\n", __func__);
 	ret = params->set_4byte_addr_mode(nor, enable);
 	if (ret && ret != -ENOTSUPP)
 		return ret;

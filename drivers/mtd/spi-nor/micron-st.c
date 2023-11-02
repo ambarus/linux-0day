@@ -200,7 +200,8 @@ static int st_nor_four_die_late_init(struct spi_nor *nor)
 	params->die_erase_opcode = SPINOR_OP_MT_DIE_ERASE;
 	params->n_dice = 4;
 
-	return 0;
+	/* needed by erase die command */
+	return spi_nor_set_4byte_addr_mode(nor, true);
 }
 
 static int st_nor_two_die_late_init(struct spi_nor *nor)
@@ -210,7 +211,8 @@ static int st_nor_two_die_late_init(struct spi_nor *nor)
 	params->die_erase_opcode = SPINOR_OP_MT_DIE_ERASE;
 	params->n_dice = 2;
 
-	return 0;
+	/* needed by erase die command */
+	return spi_nor_set_4byte_addr_mode(nor, true);
 }
 
 static struct spi_nor_fixups n25q00_fixups = {
