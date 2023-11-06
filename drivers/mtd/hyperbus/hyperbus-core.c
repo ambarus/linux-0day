@@ -12,6 +12,19 @@
 #include <linux/of.h>
 #include <linux/types.h>
 
+struct mtd_info *hyperbus_sfdp_probe(struct map_info *map);
+
+static struct mtd_info *hyperbus_map_probe(struct map_info *map)
+{
+	struct mtd_info *mtd;
+
+	mtd = do_map_probe("cfi_probe", map);
+	if (!mtd)
+		mtd = hyperbus_sfdp_probe(map);
+
+	return mtd;
+}
+
 static struct hyperbus_device *map_to_hbdev(struct map_info *map)
 {
 	return container_of(map, struct hyperbus_device, map);
@@ -106,7 +119,7 @@ int hyperbus_register_device(struct hyperbus_device *hbdev)
 		}
 	}
 
-	hbdev->mtd = do_map_probe("cfi_probe", map);
+	hbdev->mtd = hyperbus_map_probe(map);
 	if (!hbdev->mtd) {
 		dev_err(dev, "probing of hyperbus device failed\n");
 		return -ENODEV;
