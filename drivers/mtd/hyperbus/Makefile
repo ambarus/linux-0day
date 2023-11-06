@@ -5,3 +5,5 @@ obj-$(CONFIG_HBMC_AM654)	+= hbmc-am654.o
 obj-$(CONFIG_RPCIF_HYPERBUS)	+= rpc-if.o
 
 hyperbus-objs	:= hyperbus-core.o hyperbus-sfdp.o
+
+obj-y += ifx-hyperbus.o
