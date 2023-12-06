@@ -245,6 +245,8 @@ static int __xipram hyperbus_sfdp_probe_chip(struct map_info *map, __u32 base,
 	u32 probe_addr;
 	int i;
 
+	pr_err("%s hello world!\n", __func__);
+
 	if (base >= map->size) {
 		pr_notice("Probe at base(0x%08x) past the end of the map(0x%08lx)\n",
 			  base, map->size - 1);
