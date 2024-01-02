@@ -103,6 +103,10 @@
 	status = "okay";
 };
 
+&spi_13 {
+	status = "okay";
+};
+
 &usi_uart {
 	samsung,clkreq-on; /* needed for UART mode */
 	status = "okay";
@@ -110,6 +114,11 @@
 
 &usi8 {
 	samsung,mode = <USI_V2_I2C>;
+	status = "okay";
+};
+
+&usi13 {
+	samsung,mode = <USI_V2_SPI>;
 	status = "okay";
 };
 
