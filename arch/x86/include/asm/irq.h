@@ -10,6 +10,7 @@
 
 #include <asm/apicdef.h>
 #include <asm/irq_vectors.h>
+#include <linux/cpumask.h>
 
 /*
  * The irq entry code is in the noinstr section and the start/end of
@@ -35,6 +36,8 @@ extern void kvm_set_posted_intr_wakeup_handler(void (*handler)(void));
 
 extern void (*x86_platform_ipi_callback)(void);
 extern void native_init_IRQ(void);
+
+struct pt_regs;
 
 extern void __handle_irq(struct irq_desc *desc, struct pt_regs *regs);
 
