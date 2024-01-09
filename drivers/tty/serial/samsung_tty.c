@@ -89,7 +89,7 @@ struct s3c24xx_uart_info {
 
 	/* uart port features */
 
-	unsigned int		has_divslot:1;
+	u8			has_divslot:1;
 };
 
 struct s3c24xx_serial_drv_data {
