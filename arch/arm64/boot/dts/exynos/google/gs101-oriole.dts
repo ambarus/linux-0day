@@ -109,7 +109,7 @@
 	loopback@0 {
 		compatible = "linux,spi-loopback-test";
 		reg = <0>;
-		spi-max-frequency = <50000>;
+		spi-max-frequency = <50000000>;
 	};
 };
 
