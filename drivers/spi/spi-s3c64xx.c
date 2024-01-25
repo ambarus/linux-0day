@@ -1114,7 +1114,7 @@ static int s3c64xx_spi_get_fifosize(const struct platform_device *pdev,
 	const struct s3c64xx_spi_port_config *port = sdd->port_conf;
 	const int *fifo_lvl_mask = port->fifo_lvl_mask;
 	struct device_node *np = pdev->dev.of_node;
-	int id;
+	int id, ret;
 
 	if (!np) {
 		if (pdev->id < 0)
@@ -1129,6 +1129,10 @@ static int s3c64xx_spi_get_fifosize(const struct platform_device *pdev,
 		sdd->fifosize = port->fifosize;
 		return 0;
 	}
+
+	ret = of_property_read_u32(np, "samsung,spi-fifosize", &sdd->fifosize);
+	if (ret == 0)
+		return 0;
 
 	id = of_alias_get_id(np, "spi");
 	if (id < 0)
