@@ -1501,6 +1501,18 @@ static const struct s3c64xx_spi_port_config exynosautov9_spi_port_config = {
 	.quirks		= S3C64XX_SPI_QUIRK_CS_AUTO,
 };
 
+static const struct s3c64xx_spi_port_config gs101_spi_port_config = {
+	.fifosize       = 64,
+	.rx_lvl_offset  = 15,
+	.tx_st_done     = 25,
+	.clk_div        = 4,
+	.high_speed     = true,
+	.clk_from_cmu   = true,
+	.has_loopback   = true,
+	.use_32bit_io	= true,
+	.quirks         = S3C64XX_SPI_QUIRK_CS_AUTO,
+};
+
 static const struct s3c64xx_spi_port_config fsd_spi_port_config = {
 	.fifosize	= 64,
 	.rx_lvl_offset	= 15,
@@ -1555,6 +1567,10 @@ static const struct of_device_id s3c64xx_spi_dt_match[] = {
 	{
 		.compatible = "samsung,exynosautov9-spi",
 		.data = &exynosautov9_spi_port_config,
+	},
+	{
+		.compatible = "google,gs101-spi",
+		.data = &gs101_spi_port_config,
 	},
 	{
 		.compatible = "tesla,fsd-spi",
