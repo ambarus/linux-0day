@@ -4,6 +4,8 @@
  * (C) 2001-2003 Red Hat, Inc.
  */
 
+#define DEBUG
+#define VERBOSE_DEBUG
 #include <linux/kernel.h>
 #include <linux/slab.h>
 #include <linux/module.h>
@@ -23,6 +25,7 @@ struct mtd_info *mtd_do_chip_probe(struct map_info *map, struct chip_probe *cp)
 	struct mtd_info *mtd;
 	struct cfi_private *cfi;
 
+	pr_err("%s, enter\n", __func__);
 	/* First probe the map to see if we have CFI stuff there. */
 	cfi = genprobe_ident_chips(map, cp);
 
@@ -32,9 +35,12 @@ struct mtd_info *mtd_do_chip_probe(struct map_info *map, struct chip_probe *cp)
 	map->fldrv_priv = cfi;
 	/* OK we liked it. Now find a driver for the command set it talks */
 
+	pr_err("%s, try first cmd set\n", __func__);
 	mtd = check_cmd_set(map, 1); /* First the primary cmdset */
-	if (!mtd)
+	if (!mtd) {
+		pr_err("%s, second cmd set\n", __func__);
 		mtd = check_cmd_set(map, 0); /* Then the secondary */
+	}
 
 	if (mtd) {
 		if (mtd->size > map->size) {
@@ -43,6 +49,7 @@ struct mtd_info *mtd_do_chip_probe(struct map_info *map, struct chip_probe *cp)
 			       (unsigned long)map->size >> 10);
 			mtd->size = map->size;
 		}
+		pr_err("%s, exit, found mtd\n", __func__);
 		return mtd;
 	}
 
@@ -64,6 +71,8 @@ static struct cfi_private *genprobe_ident_chips(struct map_info *map, struct chi
 	int max_chips;
 	int i, j;
 
+	pr_err("%s, enter \n", __func__);
+
 	memset(&cfi, 0, sizeof(cfi));
 
 	/* Call the probetype-specific code with all permutations of
@@ -73,6 +82,8 @@ static struct cfi_private *genprobe_ident_chips(struct map_info *map, struct chi
 		pr_debug("%s: Found no %s device at location zero\n",
 			 cp->name, map->name);
 		return NULL;
+	} else {
+		pr_err("%s, genprobe_new_chip succesful\n", __func__);
 	}
 
 #if 0 /* Let the CFI probe routine do this sanity check. The Intel and AMD
@@ -88,12 +99,16 @@ static struct cfi_private *genprobe_ident_chips(struct map_info *map, struct chi
 	cfi.chipshift = cfi.cfiq->DevSize;
 
 	if (cfi_interleave_is_1(&cfi)) {
+		pr_err("%s, cfi_interleave_is 1\n", __func__);
 		;
 	} else if (cfi_interleave_is_2(&cfi)) {
+		pr_err("%s, cfi_interleave_is 2\n", __func__);
 		cfi.chipshift++;
 	} else if (cfi_interleave_is_4((&cfi))) {
+		pr_err("%s, cfi_interleave_is 4\n", __func__);
 		cfi.chipshift += 2;
 	} else if (cfi_interleave_is_8(&cfi)) {
+		pr_err("%s, cfi_interleave_is 8\n", __func__);
 		cfi.chipshift += 3;
 	} else {
 		BUG();
@@ -106,6 +121,8 @@ static struct cfi_private *genprobe_ident_chips(struct map_info *map, struct chi
 	 * Align bitmap storage size to full byte.
 	 */
 	max_chips = map->size >> cfi.chipshift;
+	pr_err("%s map size = %lu, cfi.chipshift = %lu, max_chips = %d\n",
+	       __func__, map->size, cfi.chipshift, max_chips);
 	if (!max_chips) {
 		printk(KERN_WARNING "NOR chip too large to fit in mapping. Attempting to cope...\n");
 		max_chips = 1;
@@ -126,6 +143,7 @@ static struct cfi_private *genprobe_ident_chips(struct map_info *map, struct chi
 	 */
 
 	for (i = 1; i < max_chips; i++) {
+		pr_err("%s, probe chip %d\n", __func__, i);
 		cp->probe_chip(map, i << cfi.chipshift, chip_map, &cfi);
 	}
 
@@ -157,6 +175,7 @@ static struct cfi_private *genprobe_ident_chips(struct map_info *map, struct chi
 	}
 
 	bitmap_free(chip_map);
+	pr_err("%s, exit \n", __func__);
 	return retcfi;
 }
 
@@ -168,10 +187,14 @@ static int genprobe_new_chip(struct map_info *map, struct chip_probe *cp,
 	int max_chips = map_bankwidth(map); /* And minimum 1 */
 	int nr_chips, type;
 
+	pr_err("%s, enter, min_chips = %d, max_chips = %d \n",
+	       __func__, min_chips, max_chips);
 	for (nr_chips = max_chips; nr_chips >= min_chips; nr_chips >>= 1) {
 
-		if (!cfi_interleave_supported(nr_chips))
+		if (!cfi_interleave_supported(nr_chips)) {
+			pr_err("%s, interleave not supported \n", __func__);
 		    continue;
+		}
 
 		cfi->interleave = nr_chips;
 
@@ -182,10 +205,13 @@ static int genprobe_new_chip(struct map_info *map, struct chip_probe *cp,
 		for (; type <= CFI_DEVICETYPE_X32; type<<=1) {
 			cfi->device_type = type;
 
-			if (cp->probe_chip(map, 0, NULL, cfi))
+			if (cp->probe_chip(map, 0, NULL, cfi)) {
+				pr_err("%s, exit, probe-chip successfull \n", __func__);
 				return 1;
+			}
 		}
 	}
+	pr_err("%s, exit, no chip\n", __func__);
 	return 0;
 }
 

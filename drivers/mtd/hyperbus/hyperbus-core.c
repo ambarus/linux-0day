@@ -18,6 +18,7 @@ static struct mtd_info *hyperbus_map_probe(struct map_info *map)
 {
 	struct mtd_info *mtd;
 
+	pr_err("%s enter\n", __func__);
 	mtd = do_map_probe("cfi_probe", map);
 	if (!mtd)
 		mtd = hyperbus_sfdp_probe(map);

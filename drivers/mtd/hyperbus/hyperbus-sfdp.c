@@ -2,6 +2,8 @@
 /*
  * Copyright (C) 2023, Infineon Technologies.
  */
+#define DEBUG
+#define VERBOSE_DEBUG
 #include <linux/mtd/xip.h>
 #include <linux/mtd/gen_probe.h>
 
@@ -245,23 +247,24 @@ static int __xipram hyperbus_sfdp_probe_chip(struct map_info *map, __u32 base,
 	u32 probe_addr;
 	int i;
 
-	pr_err("%s hello world!\n", __func__);
+	pr_err("%s enter. cfi->numchips = %d\n", __func__, cfi->numchips);
 
 	if (base >= map->size) {
-		pr_notice("Probe at base(0x%08x) past the end of the map(0x%08lx)\n",
+		pr_err("Probe at base(0x%08x) past the end of the map(0x%08lx)\n",
 			  base, map->size - 1);
 		return 0;
 	}
 
 	probe_addr = base + cfi_build_cmd_addr(HYPERBUS_ADDR_UNLOCK1, map, cfi);
 	if (probe_addr >= map->size) {
-		pr_notice("Probe at base[unlock](0x%08x) past the end of the map(0x%08lx)\n",
+		pr_err("Probe at base[unlock](0x%08x) past the end of the map(0x%08lx)\n",
 			  probe_addr, map->size - 1);
 		return 0;
 	}
 
 	xip_disable();
 	if (!hyperbus_sfdp_mode_on(base, map, cfi)) {
+		pr_err("%s sfdp mode off exit\n", __func__);
 		xip_enable(base, map, cfi);
 		return 0;
 	}
@@ -270,16 +273,23 @@ static int __xipram hyperbus_sfdp_probe_chip(struct map_info *map, __u32 base,
 	 * This is the first time we're called. Set up the CFI stuff accordingly
 	 * and return
 	 */
-	if (!cfi->numchips)
+	if (!cfi->numchips) {
+		pr_err("%s return hyperbus_sfdp_chip_setup\n", __func__);
 		return hyperbus_sfdp_chip_setup(map, cfi);
+	}
 
+	pr_err("%s base = %d, cfi->chipshift = %lu\n",
+		 __func__, base, cfi->chipshift);
 	/* Check each previous chip to see if it's an alias */
 	for (i = 0; i < (base >> cfi->chipshift); i++) {
 		unsigned long start;
+		pr_err("%s enter for, *chip_map = %lu\n", __func__, *chip_map);
 
 		/* Skip location; no valid chip at this address */
-		if (!test_bit(i, chip_map))
+		if (!test_bit(i, chip_map)) {
+			pr_err("%s testbit\n", __func__);
 			continue;
+		}
 
 		start = i << cfi->chipshift;
 
@@ -297,7 +307,7 @@ static int __xipram hyperbus_sfdp_probe_chip(struct map_info *map, __u32 base,
 			/* If the SFDP signature goes away, it's an alias */
 			if (!hyperbus_sfdp_present(map, start, cfi)) {
 				xip_allowed(base, map);
-				pr_debug("%s: Found an alias at 0x%x for the chip at 0x%lx\n",
+				pr_debug("%s: sfdp not present: Found an alias at 0x%x for the chip at 0x%lx\n",
 					 map->name, base, start);
 				return 0;
 			}
@@ -312,13 +322,14 @@ static int __xipram hyperbus_sfdp_probe_chip(struct map_info *map, __u32 base,
 
 			if (hyperbus_sfdp_present(map, base, cfi)) {
 				xip_allowed(base, map);
-				pr_debug("%s: Found an alias at 0x%x for the chip at 0x%lx\n",
+				pr_debug("%s: sfdp present Found an alias at 0x%x for the chip at 0x%lx\n",
 					 map->name, base, start);
 				return 0;
 			}
 		}
 	}
 
+	pr_err("%s after for\n", __func__);
 	/*
 	 * OK, if we got to here, then none of the previous chips appear to
 	 * be aliases for the current one.
@@ -334,6 +345,7 @@ static int __xipram hyperbus_sfdp_probe_chip(struct map_info *map, __u32 base,
 		map->name, cfi->interleave, cfi->device_type * 8, base,
 		map->bankwidth * 8);
 
+	pr_err("%s exit\n", __func__);
 	return 1;
 }
 
@@ -344,5 +356,6 @@ static struct chip_probe hyperbus_sfdp_chip_probe = {
 
 struct mtd_info *hyperbus_sfdp_probe(struct map_info *map)
 {
+	pr_err("%s enter \n", __func__);
 	return mtd_do_chip_probe(map, &hyperbus_sfdp_chip_probe);
 }
