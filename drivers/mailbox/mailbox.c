@@ -317,11 +317,20 @@ EXPORT_SYMBOL_GPL(mbox_send_request);
 
 int mbox_wait_request(int err, struct mbox_wait *wait)
 {
+	unsigned long timeout;
+	int ret;
+
 	switch (err) {
 	case -EINPROGRESS:
-		wait_for_completion(&wait->completion);
+		timeout = msecs_to_jiffies(15000);
+		ret = wait_for_completion_timeout(&wait->completion, timeout);
+
+//		wait_for_completion(&wait->completion);
 		reinit_completion(&wait->completion);
-		err = wait->err;
+		if (!ret)
+			err = -ETIME;
+		else
+			err = wait->err;
 		break;
 	}
 

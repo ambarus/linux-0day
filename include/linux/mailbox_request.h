@@ -3,6 +3,7 @@
 #ifndef __MAILBOX_REQUEST_H
 #define __MAILBOX_REQUEST_H
 
+#include <linux/bits.h>
 #include <linux/types.h>
 #include <linux/completion.h>
 
@@ -15,10 +16,15 @@ struct mbox_wait {
 	struct mbox_wait _wait = { \
 		COMPLETION_INITIALIZER_ONSTACK((_wait).completion), 0 }
 
+#define MBOX_REQ_MAY_SLEEP	BIT(0)
+
 struct mbox_request {
+	struct mbox_wait *wait;
 	void *tx;
 	void *rx;
-	struct mbox_wait *wait;
+	unsigned int txlen;
+	unsigned int rxlen;
+	u32 flags;
 };
 
 #endif /* __MAILBOX_H */
