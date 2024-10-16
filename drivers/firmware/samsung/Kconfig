@@ -1,0 +1,10 @@
+# SPDX-License-Identifier: GPL-2.0
+
+menuconfig GS_ACPM
+	tristate "ACPM driver support"
+	default y
+	help
+	  Enable ACPM support
+
+if GS_ACPM
+endif
