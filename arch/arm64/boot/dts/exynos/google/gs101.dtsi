@@ -9,6 +9,7 @@
 #include <dt-bindings/clock/google,gs101.h>
 #include <dt-bindings/gpio/gpio.h>
 #include <dt-bindings/interrupt-controller/arm-gic.h>
+#include <dt-bindings/mailbox/google,gs101.h>
 #include <dt-bindings/soc/samsung,exynos-usi.h>
 
 / {
@@ -275,6 +276,28 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges = <0x0 0x0 0x2039000 0x40000>;
+	};
+
+	firmware {
+		acpm_ipc: power-management {
+			compatible = "google,gs101-acpm-ipc";
+			mboxes = <&ap2apm_mailbox DOORBELL 0
+				  &ap2apm_mailbox DOORBELL 1
+				  &ap2apm_mailbox DOORBELL 2
+				  &ap2apm_mailbox DOORBELL 3
+				  &ap2apm_mailbox DOORBELL 4
+				  &ap2apm_mailbox DOORBELL 5
+				  &ap2apm_mailbox DOORBELL 6
+				  &ap2apm_mailbox DOORBELL 7
+				  &ap2apm_mailbox DOORBELL 8
+				  &ap2apm_mailbox DOORBELL 9
+				  &ap2apm_mailbox DOORBELL 10
+				  &ap2apm_mailbox DOORBELL 11
+				  &ap2apm_mailbox DOORBELL 12
+				  &ap2apm_mailbox DOORBELL 13
+				  &ap2apm_mailbox DOORBELL 14>;
+			shmem = <&apm_sram>;
+		};
 	};
 
 	soc: soc@0 {
