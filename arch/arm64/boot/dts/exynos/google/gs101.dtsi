@@ -204,6 +204,11 @@
 			compatible = "google,gs101-acpm-ipc";
 			mboxes = <&ap2apm_mailbox>;
 			shmem = <&apm_sram>;
+
+			acpm_dvfs_clocks: clocks {
+				compatible = "google,gs101-acpm-dvfs-clocks";
+				#clock-cells = <1>;
+			};
 		};
 	};
 
