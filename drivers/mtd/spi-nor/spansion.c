@@ -758,6 +758,25 @@ static const struct spi_nor_fixups s25fs_s_nor_fixups = {
 	.post_bfpt = s25fs_s_nor_post_bfpt_fixups,
 };
 
+static int
+cyrs17b_post_bfpt_fixups(struct spi_nor *nor,
+			 const struct sfdp_parameter_header *bfpt_header,
+			 const struct sfdp_bfpt *bfpt)
+{
+	struct spi_nor_read_command *reads = nor->params->reads;
+
+	/* Fix mode and dumy cycles */
+	reads[SNOR_CMD_READ_FAST].num_mode_clocks = 8;
+	reads[SNOR_CMD_READ_1_1_4].num_wait_states = 8;
+	reads[SNOR_CMD_READ_1_4_4].num_wait_states = 8;
+
+	return 0;
+}
+
+static const struct spi_nor_fixups cyrs17b_fixups = {
+	.post_bfpt = cyrs17b_post_bfpt_fixups,
+};
+
 static const struct flash_info spansion_nor_parts[] = {
 	{
 		.id = SNOR_ID(0x01, 0x02, 0x12),
@@ -922,6 +941,11 @@ static const struct flash_info spansion_nor_parts[] = {
 		.size = SZ_512K,
 		.sector_size = SZ_512K,
 		.flags = SPI_NOR_NO_ERASE,
+	}, {
+		/* cyrs17b512 */
+		.id = SNOR_ID(0xc1, 0x60, 0x20),
+		.mfr_flags = USE_CLSR,
+		.fixups = &cyrs17b_fixups
 	}, {
 		.id = SNOR_ID(0x34, 0x2a, 0x1a, 0x0f, 0x03, 0x90),
 		.name = "s25hl512t",
