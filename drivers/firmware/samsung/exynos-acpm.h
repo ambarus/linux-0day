@@ -19,12 +19,36 @@
  * @chans:	offset to array of struct acpm_chan_shmem.
  * @reserved1:	unused fields.
  * @num_chans:	number of channels.
+ * @reserved2:	unused fields.
+ * @log_rear:	rear pointer of APM log queue.
+ * @log_front:	front pointer of APM log queue.
+ * @log_base:	base address of APM log queue.
+ * @log_mlen:	log message length.
+ * @log_qlen:	log queue length.
+ * @reserved3:	unused fields.
+ * @preempt_log_rear:	rear pointer of APM preempt log queue.
+ * @preempt_log_front:	front pointer of APM preempt log queue.
+ * @preempt_log_base:	base address of APM preempt log queue.
+ * @preempt_log_qlen:	preempt log queue length.
+ * @reserved4:	unused fields.
  */
 struct acpm_shmem {
 	u32 reserved[2];
 	u32 chans;
 	u32 reserved1[3];
 	u32 num_chans;
+	u32 reserved2[6];
+	u32 log_rear;
+	u32 log_front;
+	u32 log_base;
+	u32 log_mlen;
+	u32 log_qlen;
+	u32 reserved3[24];
+	u32 preempt_log_rear;
+	u32 preempt_log_front;
+	u32 preempt_log_base;
+	u32 preempt_log_qlen;
+	u32 reserved4[64];
 };
 
 /**
@@ -41,23 +65,36 @@ struct acpm_queue {
 
 struct device;
 struct acpm_chan;
+struct acpm_log_info;
 
 /**
  * struct acpm_info - driver's private data.
  * @shmem:	pointer to the SRAM configuration data.
+ * @log:	pointer to the ACPM logging info.
  * @sram_base:	base address of SRAM.
  * @chans:	pointer to the ACPM channel parameters retrieved from SRAM.
  * @dev:	pointer to the exynos-acpm device.
+ * @mbox_dbg_chan: mailbox debug channel.
  * @handle:	instance of acpm_handle to send to clients.
  * @num_chans:	number of channels available for this controller.
  */
 struct acpm_info {
 	struct acpm_shmem __iomem *shmem;
+	struct acpm_log_info *log;
 	void __iomem *sram_base;
 	struct acpm_chan *chans;
 	struct device *dev;
+	unsigned int mbox_dbg_chan;
 	struct acpm_handle handle;
 	u32 num_chans;
 };
+
+#ifdef CONFIG_DEBUG_FS
+int acpm_debugfs_register(struct acpm_info *acpm);
+void acpm_debugfs_remove(void);
+#else
+static inline int acpm_debugfs_register(struct acpm_info *acpm) {}
+static inline void acpm_debugfs_remove(void) {}
+#endif
 
 #endif /* __EXYNOS_ACPM_H__ */
