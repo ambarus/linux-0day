@@ -467,6 +467,12 @@
 		};
 	};
 
+	chipid {
+		compatible = "google,gs101-chipid";
+		nvmem-cells = <&otp_chipid>;
+		nvmem-cell-names = "otp-chipid";
+	};
+
 	/* ect node is required to be present by bootloader */
 	ect {
 	};
@@ -570,6 +576,23 @@
 		#address-cells = <1>;
 		#size-cells = <1>;
 		ranges = <0x0 0x0 0x0 0x40000000>;
+
+		otp: otp@10000000 {
+			compatible = "google,gs101-otp";
+			reg = <0x10000000 0xf084>;
+			#address-cells = <1>;
+			#size-cells = <1>;
+
+			nvmem-layout {
+				compatible = "fixed-layout";
+				#address-cells = <1>;
+				#size-cells = <1>;
+
+				otp_chipid: otp_chipid@0 {
+					reg = <0x0 0x18>;
+				};
+			};
+		};
 
 		cmu_misc: clock-controller@10010000 {
 			compatible = "google,gs101-cmu-misc";
