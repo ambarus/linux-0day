@@ -14,9 +14,11 @@
 
 #include <linux/array_size.h>
 #include <linux/device.h>
+#include <linux/err.h>
 #include <linux/errno.h>
 #include <linux/mfd/syscon.h>
 #include <linux/module.h>
+#include <linux/nvmem-consumer.h>
 #include <linux/of.h>
 #include <linux/platform_device.h>
 #include <linux/regmap.h>
@@ -30,6 +32,7 @@ struct exynos_chipid_variant {
 	unsigned int rev_reg;		/* revision register offset */
 	unsigned int main_rev_shift;	/* main revision offset in rev_reg */
 	unsigned int sub_rev_shift;	/* sub revision offset in rev_reg */
+	const char *nvmem_cell_name;
 };
 
 struct exynos_chipid_info {
@@ -106,27 +109,72 @@ static int exynos_chipid_get_chipid_info(struct regmap *regmap,
 	return 0;
 }
 
+#define EXYNOS_CHIPID_SIZE 0x18
+#define EXYNOS_REV_PART_MASK_GS101 0xff
+static void exynos_chipid_get_info(u8 *buf1,
+				  const struct exynos_chipid_variant *data,
+				  struct exynos_chipid_info *soc_info)
+{
+	u32 main_rev, sub_rev;
+	u32 *buf = (u32 *)buf1;
+
+	soc_info->product_id = buf[0] & EXYNOS_MASK;
+	main_rev = buf[4] & EXYNOS_REV_PART_MASK_GS101;
+	sub_rev = (buf[4] >> data->sub_rev_shift) & EXYNOS_REV_PART_MASK;
+	soc_info->revision = (main_rev << EXYNOS_REV_PART_SHIFT) | sub_rev;
+}
+
 static int exynos_chipid_probe(struct platform_device *pdev)
 {
 	const struct exynos_chipid_variant *drv_data;
 	struct exynos_chipid_info soc_info;
 	struct soc_device_attribute *soc_dev_attr;
+	struct device *dev = &pdev->dev;
+	struct nvmem_cell *cell = NULL;
 	struct soc_device *soc_dev;
 	struct device_node *root;
 	struct regmap *regmap;
+	u8 *data = NULL;
+	size_t len;
 	int ret;
 
 	drv_data = of_device_get_match_data(&pdev->dev);
 	if (!drv_data)
 		return -EINVAL;
 
-	regmap = device_node_to_regmap(pdev->dev.of_node);
-	if (IS_ERR(regmap))
-		return PTR_ERR(regmap);
+	if (drv_data->nvmem_cell_name) {
+		cell = nvmem_cell_get(dev, drv_data->nvmem_cell_name);
+		if (IS_ERR(cell)) {
+			dev_err(dev, "No chipid data specified\n");
+			return PTR_ERR(cell);
+		}
 
-	ret = exynos_chipid_get_chipid_info(regmap, drv_data, &soc_info);
-	if (ret < 0)
-		return ret;
+		data = nvmem_cell_read(cell, &len);
+		if (IS_ERR(data)) {
+			dev_err(dev, "Failed to read chipid data: %pe\n", data);
+			return PTR_ERR(data);
+		};
+
+		if (len != EXYNOS_CHIPID_SIZE) {
+			dev_err(&pdev->dev, "Invalid chipid data size %zu\n",
+				len);
+			return -EINVAL;
+		}
+		int i;
+		for (i = 0; i < len; i++)
+			dev_err(dev, "tudors chipid[%d] = %02x\n", i, data[i]);
+		exynos_chipid_get_info(data, drv_data, &soc_info);
+		kfree(data);
+	} else {
+		regmap = device_node_to_regmap(pdev->dev.of_node);
+		if (IS_ERR(regmap))
+			return PTR_ERR(regmap);
+
+		ret = exynos_chipid_get_chipid_info(regmap, drv_data,
+						    &soc_info);
+		if (ret < 0)
+			return ret;
+	}
 
 	soc_dev_attr = devm_kzalloc(&pdev->dev, sizeof(*soc_dev_attr),
 				    GFP_KERNEL);
@@ -154,13 +202,15 @@ static int exynos_chipid_probe(struct platform_device *pdev)
 	if (IS_ERR(soc_dev))
 		return PTR_ERR(soc_dev);
 
-	ret = exynos_asv_init(&pdev->dev, regmap);
-	if (ret)
-		goto err;
+	if (!drv_data->nvmem_cell_name) {
+		ret = exynos_asv_init(&pdev->dev, regmap);
+		if (ret)
+			goto err;
+	}
 
 	platform_set_drvdata(pdev, soc_dev);
 
-	dev_info(&pdev->dev, "Exynos: CPU[%s] PRO_ID[0x%x] REV[0x%x] Detected\n",
+	dev_info(&pdev->dev, "tudor Exynos: CPU[%s] PRO_ID[0x%x] REV[0x%x] Detected\n",
 		 soc_dev_attr->soc_id, soc_info.product_id, soc_info.revision);
 
 	return 0;
@@ -194,6 +244,7 @@ static const struct exynos_chipid_variant gs101_chipid_drv_data = {
 	.rev_reg	= 0x10,
 	.main_rev_shift	= 0,
 	.sub_rev_shift	= 16,
+	.nvmem_cell_name = "otp-chipid",
 };
 
 static const struct of_device_id exynos_chipid_of_device_ids[] = {
