@@ -143,10 +143,8 @@ static int exynos_chipid_probe(struct platform_device *pdev)
 		return -ENOMEM;
 
 	soc_dev_attr->soc_id = exynos_product_id_to_soc_id(soc_info.product_id);
-	if (!soc_dev_attr->soc_id) {
-		pr_err("Unknown SoC\n");
-		return -ENODEV;
-	}
+	if (!soc_dev_attr->soc_id)
+		return dev_err_probe(dev, -ENODEV, "Unknown SoC\n");
 
 	/* please note that the actual registration will be deferred */
 	soc_dev = soc_device_register(soc_dev_attr);
