@@ -18,25 +18,25 @@
 
 			trips {
 				big_switch_on: big-switch-on {
-					temperature = <80000>;
+					temperature = <42000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 
 				big_mitigate: big-mitigate {
-					temperature = <90000>;
+					temperature = <46000>;
 					hysteresis = <5000>;
 					type = "passive";
 				};
 
 				big_hot: big-hot {
-					temperature = <100000>;
+					temperature = <50000>;
 					hysteresis = <5000>;
 					type = "hot";
 				};
 
 				big_critical: big-critical {
-					temperature = <105000>;
+					temperature = <55000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -58,25 +58,25 @@
 
 			trips {
 				mid_switch_on: mid-switch-on {
-					temperature = <80000>;
+					temperature = <42000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 
 				mid_mitigate: mid-mitigate {
-					temperature = <90000>;
+					temperature = <46000>;
 					hysteresis = <5000>;
 					type = "passive";
 				};
 
 				mid_hot: mid-hot {
-					temperature = <100000>;
+					temperature = <50000>;
 					hysteresis = <5000>;
 					type = "hot";
 				};
 
 				mid_critical: mid-critical {
-					temperature = <105000>;
+					temperature = <55000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
@@ -98,25 +98,25 @@
 
 			trips {
 				little_switch_on: little-switch-on {
-					temperature = <80000>;
+					temperature = <42000>;
 					hysteresis = <2000>;
 					type = "passive";
 				};
 
 				little_mitigate: little-mitigate {
-					temperature = <90000>;
+					temperature = <46000>;
 					hysteresis = <5000>;
 					type = "passive";
 				};
 
 				little_hot: little-hot {
-					temperature = <100000>;
+					temperature = <50000>;
 					hysteresis = <5000>;
 					type = "hot";
 				};
 
 				little_critical: little-critical {
-					temperature = <105000>;
+					temperature = <55000>;
 					hysteresis = <2000>;
 					type = "critical";
 				};
